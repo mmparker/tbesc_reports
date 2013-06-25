@@ -153,8 +153,9 @@ ggplot(enrolled_preenroll, aes(x = AgeAtEnrollment, y = ..count../sum(..count..)
     labs(x = "Age at Enrollment", y = "Percent of Enrollees")
 
 
-
 ```
+
+Median Age of Participants: `r median(enrolled_preenroll$AgeAtEnrollment, na.rm = TRUE)`
 
 
 
