@@ -70,6 +70,47 @@ Total Enrolled to Date: `r total_enrolled`
 
 
 ### Eligibility Criteria
+```{r eligcrit}
+
+# Get eligibility criteria from the preenrollments
+elig.melt <- melt(enrolled_preenroll, 
+                  id.var = "StudyId", 
+                  measure.var = c("CloseContact", "ForeignBorn", "LtbiPrevalence",
+                                  "HighRisk", "HivPositive")
+)
+
+# Convert this weird numeric scheme to logical
+elig.melt$valuel <- !is.na(elig.melt$value)
+
+# Cast and summarize
+elig.wide <- ddply(elig.melt, .var = "variable", .fun = summarise, n = sum(valuel))
+
+
+# Add a row for "multiple" criteria
+ncrit <- ddply(elig.melt, .var = "StudyId", .fun = summarise, n = sum(valuel))
+
+multicrit <- data.frame(variable = "Multiple",
+                        n = nrow(ncrit[ncrit$n > 1, ]))
+                            
+crit.table <- rbind(elig.wide, multicrit)
+
+crit.table$percent <- round(crit.table$n / nrow(enrolled_preenroll), 4) * 100
+
+levels(crit.table$variable) <- c("Close Contact", "Foreign-born", "Local LTBI Prevalence > 25%",
+                                 "30+ Days in a High-Risk Country", "HIV+", "Multiple Criteria")
+
+names(crit.table) <- c("Criterion", "Number Enrolled", "Percent of Enrollees")
+
+
+
+
+```
+
+```{r eligcrit_display, result='asis'}
+
+dfprintif(crit.table)
+
+```
 
 
 
