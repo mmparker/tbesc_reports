@@ -89,6 +89,20 @@ Total Enrolled to Date: `r total_enrolled`
 
 
 
+
+### Eligibility Criteria
+
+
+
+
+### Gender
+
+
+
+### Participant Ages
+
+
+
 ### Participants by Country of Origin
 ```{r,results="hide",fig.width = 8, fig.height = 8}
 
@@ -113,11 +127,6 @@ ggplot(birthco, aes(x = BirthCountry, weight = freq)) +
        x = "Country of Birth",
        y = "Number Enrolled")
 
-```
-
-
-```{r}
-### Participant Ages
 ```
 
 
@@ -247,20 +256,30 @@ dfprint(arrange(testagg, Results))
 ```
 
 
-```{r}
+
 ### Test Results by Country of Origin
-```
 
 
-```{r}
+
+
 ### Test Results by Risk Factor
-```
 
 
-```{r}
+
+
 ### Treatment Acceptance
-```
 
+
+
+
+
+### Treatment Outcomes
+
+
+
+
+
+### TB Disease
 
 
 
