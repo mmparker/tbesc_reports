@@ -12,6 +12,8 @@ options(stringsAsFactors = FALSE)
 # Load up the requisite packages
 library(knitr)     # It's a knitr document, after all...
 library(to1check)  # All TO1-related functions
+library(ggplot2)
+library(scales)
 library(plyr)      # For the count() and arrange() functions
 library(mpmisc)    # For printing data.frames nicely
 library(lubridate) # For calculating number of weeks remaining
@@ -116,10 +118,43 @@ dfprintif(crit.table)
 
 
 ### Gender
+```{r gender}
+
+# Summarize
+gender <- count(enrolled_preenroll, "Gender")
+
+gender$Gender[gender$Gender %in% 1] <- "Female"
+gender$Gender[gender$Gender %in% 2] <- "Male"
+
+# Add percentage
+gender$percent <- round(gender$freq / sum(gender$freq), 4) * 100
+
+# Pretty names
+names(gender) <- c("Gender", "Number Enrolled", "Percent of Enrollees")
+
+
+```
+
+
+```{r gender_display}
+
+dfprintif(gender)
+
+```
 
 
 
 ### Participant Ages
+```{r ages, fig.width=10}
+
+ggplot(enrolled_preenroll, aes(x = AgeAtEnrollment, y = ..count../sum(..count..))) +
+    geom_bar(binwidth = 2) +
+    scale_y_continuous(labels = percent_format()) +
+    labs(x = "Age at Enrollment", y = "Percent of Enrollees")
+
+
+
+```
 
 
 
