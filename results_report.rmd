@@ -318,7 +318,7 @@ dfprint(arrange(testagg, Results))
 
 
 
-### Test Results by Risk Factor
+### Test Results by Risk Factors
 
 
 
