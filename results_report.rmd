@@ -13,7 +13,7 @@ options(stringsAsFactors = FALSE)
 library(knitr)     # It's a knitr document, after all...
 library(to1check)  # All TO1-related functions
 library(plyr)      # For the count() and arrange() functions
-library(xtable)    # For printing data.frames nicely
+library(mpmisc)    # For printing data.frames nicely
 library(lubridate) # For calculating number of weeks remaining
 
 # Set default chunk options
@@ -44,28 +44,7 @@ enrolled <- with(to1clean$master,
 # Set up subsets of just the participants enrolled this period
 enrolled_master <- to1clean$master[to1clean$master$StudyId %in% enrolled, ]
 
-
-
-# Set up default print arguments for printing tables:
-# xtable() makes data.frames more suitable for display
-# format() converts all of the data.frame comments to character*;
-# print() writes the xtable object to HTML
-
-# *print() for xtable throws a tantrum over Date and POSIXct variables,
-# so they have to be converted to character before printing 
-
-dfprint <- function(df, printdigits = 2) {
-    print(
-        xtable(format(df, 
-                      na.encode = FALSE, 
-                      digits = printdigits, 
-                      nsmall = printdigits), 
-               align = c("l", "l", rep("c", ncol(df) - 1))
-        ),
-        type = "html",
-        include.rownames = FALSE,
-        NA.string = "-")
-}
+enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyId %in% enrolled, ]
 
 
 
