@@ -37,16 +37,16 @@ load(local_facts$datapath)
 # or who didn't complete enrollment 
 
 enrolled <- with(to1clean$master,
-    StudyId[!CloseReason %in% c("Didn't complete enrollment", "Withdrew") &
-            VisitDate >= as.Date(local_facts$period_start) &
-            VisitDate <= as.Date(local_facts$period_end)]
+    StudyID[!CloseReason %in% c("Didn't complete enrollment", "Withdrew") &
+            EnrollDate >= as.Date(local_facts$period_start) &
+            EnrollDate <= as.Date(local_facts$period_end)]
 )
 
 
 # Set up subsets of just the participants enrolled this period
-enrolled_master <- to1clean$master[to1clean$master$StudyId %in% enrolled, ]
+enrolled_master <- to1clean$master[to1clean$master$StudyID %in% enrolled, ]
 
-enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyId %in% enrolled, ]
+enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyID %in% enrolled, ]
 
 
 
@@ -76,7 +76,7 @@ Total Enrolled to Date: `r total_enrolled`
 
 # Get eligibility criteria from the preenrollments
 elig.melt <- melt(enrolled_preenroll, 
-                  id.var = "StudyId", 
+                  id.var = "StudyID", 
                   measure.var = c("CloseContact", "ForeignBorn", "LtbiPrevalence",
                                   "HighRisk", "HivPositive")
 )
@@ -89,7 +89,7 @@ elig.wide <- ddply(elig.melt, .var = "variable", .fun = summarise, n = sum(value
 
 
 # Add a row for "multiple" criteria
-ncrit <- ddply(elig.melt, .var = "StudyId", .fun = summarise, n = sum(valuel))
+ncrit <- ddply(elig.melt, .var = "StudyID", .fun = summarise, n = sum(valuel))
 
 multicrit <- data.frame(variable = "Multiple",
                         n = nrow(ncrit[ncrit$n > 1, ]))
@@ -193,14 +193,14 @@ ggplot(birthco, aes(x = BirthCountry, weight = freq)) +
 # Summarize participants' individual test results
 testres <- compile_results(to1clean)
 
-testres_enrolled <- testres[testres$StudyId %in% enrolled, ]
+testres_enrolled <- testres[testres$StudyID %in% enrolled, ]
 
 
 # Cast all results into a wide table - keep only the results of
 # participants enrolled in this period
 testwide <- dcast(
                 melt(testres_enrolled,
-                     id.var = "StudyId", 
+                     id.var = "StudyID", 
                      measure.var = c("tst", "qft", "tspot")),
                 variable ~ value,
                 fun.agg = length
@@ -223,7 +223,7 @@ names(testwide)[names(testwide) %in% "variable"] <- "Test"
 # Individual test results - proportions
 testwide.prop <- dcast(
                      melt(testres_enrolled,
-                          id.var = "StudyId", 
+                          id.var = "StudyID", 
                           measure.var = c("tst", "qft", "tspot")),
                      variable ~ value,
                      fun.agg = function(x) { length(x) / nrow(testres_enrolled) * 100}
