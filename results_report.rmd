@@ -260,8 +260,9 @@ testagg$result_class <- factor(testagg$result_class,
                                levels = c("Triple Negative", "Triple Positive",
                                           "Isolated TST+", "Isolated QFT+", 
                                           "Isolated TSPOT+",
-                                          "Isolated TST-", "Isolated QFT-", 
-                                          "Isolated TSPOT-",
+                                          "Dual Pos, QFT and TSPOT", 
+                                          "Dual Pos, TST and TSPOT", 
+                                          "Dual Pos, TST and QFT",
                                           "Inconclusive")
 )
 ```
