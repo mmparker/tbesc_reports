@@ -15,6 +15,7 @@ library(to1check)  # All TO1-related functions
 library(ggplot2)
 library(scales)
 library(gridExtra)
+library(RColorBrewer)
 library(plyr)      # For the count() and arrange() functions
 library(mpmisc)    # For printing data.frames nicely
 library(lubridate) # For calculating number of weeks remaining
@@ -392,6 +393,54 @@ ggplot(testage.melt,
     scale_size_continuous("# of Participants") +
     scale_color_manual("Test", values = colorwheel[1:3]) +
     theme_tbesc
+
+```
+
+
+
+### Test Results by Age Group
+
+
+
+```{r resultgroupsbyage}
+            
+# Aggregate results   
+ageres <- ddply(testage, .var = "age.grp", .fun = function(x) {
+    
+    # Aggregate results within the age group
+    rescount <- count(x, var = "result_class")
+    
+    # Calculate each result's percent of the age group
+    rescount$per <- rescount$freq / nrow(x)
+    
+    # Return
+    rescount
+
+})
+
+
+# Make result_class an ordered factor
+ageres$result_class <- factor(ageres$result_class,
+    levels = c("Triple Positive", 
+               "Dual Pos, TST and QFT", "Dual Pos, TST and TSPOT",
+               "Dual Pos, QFT and TSPOT",
+               "Isolated TST+", "Isolated QFT+", "Isolated TSPOT+",
+               "Triple Negative", "Inconclusive")
+)
+
+
+ggplot(ageres, aes(x = age.grp, weight = per, fill = result_class)) +
+    geom_bar(color = "black") +
+    labs(x = "Age at Enrollment", y = "Percent of Participants") +
+    coord_cartesian(y = c(-0.01, 0.6)) +
+    scale_y_continuous(labels = percent) +
+    scale_fill_manual("Result Group",
+                      values = c(rev(brewer.pal(n = 7, name = "Paired")), 
+                                 NA, NA)) +
+    theme_tbesc
+
+
+
 
 ```
 
