@@ -367,9 +367,9 @@ testage$age.grp <- factor(testage$age.grp,
 testage.agg <- ddply(testage, .var = "age.grp", .fun = summarise,
 
     n = length(StudyID),
-    per.tstpos = sum(tst %in% "Positive") / n * 100,
-    per.qftpos = sum(qft %in% "Positive") / n * 100,
-    per.tspotpos = sum(tspot %in% "Positive") / n * 100
+    per.tstpos = sum(tst %in% "Positive") / n,
+    per.qftpos = sum(qft %in% "Positive") / n,
+    per.tspotpos = sum(tspot %in% "Positive") / n
                      
 )
 
@@ -389,7 +389,8 @@ ggplot(testage.melt,
            group = variable)) +
     geom_point(aes(size = n)) +
     geom_line() +
-    labs(x = "Age at Enrollment", y = "% Positive") +
+    labs(x = "Age at Enrollment", y = "Percent Positive") +
+    scale_y_continuous(labels = percent) +
     scale_size_continuous("# of Participants") +
     scale_color_manual("Test", values = colorwheel[1:3]) +
     theme_tbesc
