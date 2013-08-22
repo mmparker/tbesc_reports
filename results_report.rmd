@@ -64,8 +64,8 @@ enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyID
 # Set a universal order for the result class variable
 result_class_order <- c("Triple Positive", 
                         "Dual Pos, TST and QFT", "Dual Pos, TST and TSPOT",
-                        "Dual Pos, QFT and TSPOT", "Isolated TST+",
-                        "Isolated QFT+", "Isolated TSPOT+",
+                        "Dual Pos, QFT and TSPOT", "Isolated QFT+", 
+                        "Isolated TSPOT+", "Isolated TST+",
                         "Triple Negative", "Inconclusive")
 
 
