@@ -396,13 +396,14 @@ ggplot(testage.melt,
            y = value,
            color = variable,
            group = variable)) +
-    geom_point(aes(size = n)) +
+    geom_point(aes(size = n, shape = variable)) +
     geom_line(aes(linetype = variable)) +
     labs(x = "Age at Enrollment", y = "Percent Positive") +
     scale_y_continuous(labels = percent) +
     scale_size_continuous("# of Participants") +
     scale_color_manual("Test", values = colorwheel[1:3]) +
     scale_linetype_discrete("Test") +
+    scale_shape_discrete("Test") +
     theme_tbesc
 
 ```
