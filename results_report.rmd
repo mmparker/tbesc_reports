@@ -420,7 +420,7 @@ ageres <- ddply(testage, .var = "age.grp", .fun = function(x) {
     rescount <- count(x, var = "result_class")
     
     # Calculate each result's percent of the age group
-    rescount$per <- rescount$freq / nrow(x)
+    rescount$per <- round(rescount$freq / nrow(x) * 100, 1)
     
     # Return
     rescount
@@ -436,8 +436,8 @@ ageres$result_class <- factor(ageres$result_class,
 ggplot(ageres, aes(x = age.grp, weight = per, fill = result_class)) +
     geom_bar(color = "black") +
     labs(x = "Age at Enrollment", y = "Percent of Participants") +
-    coord_cartesian(y = c(-0.01, 0.60)) +
-    scale_y_continuous(breaks = seq(0, 1, 0.1), labels = percent) +
+    coord_cartesian(y = c(-1, 60)) +
+    scale_y_continuous(breaks = seq(0, 100, 10)) +
     scale_fill_manual("Result Group",
                       values = c(rev(brewer.pal(n = 7, name = "Paired")), 
                                  NA, NA)) +
@@ -448,6 +448,70 @@ ggplot(ageres, aes(x = age.grp, weight = per, fill = result_class)) +
 
 
 ```
+
+
+
+#### How much is increasing positivity driven by the triple-positives?
+
+```{r notrippos}
+
+# But actually just reordering the factor and making them invisible
+ageres$notrippos <- factor(ageres$result_class,
+                           levels = result_class_order[c(2:7, 1, 8, 9)],
+                           ordered = TRUE)
+
+
+ggplot(ageres, aes(x = age.grp, weight = per, fill = notrippos)) +
+    geom_bar(color = "black") +
+    labs(x = "Age at Enrollment", y = "Percent of Participants") +
+    coord_cartesian(y = c(-1, 60)) +
+    scale_y_continuous(breaks = seq(0, 100, 10)) +
+    scale_fill_manual("Result Group",
+                      values = c(rev(brewer.pal(n = 7, 
+                                                 name = "Paired")[-7]), 
+                                 "honeydew", NA, NA)) +
+    theme_tbesc +
+    guides(fill = guide_legend(reverse = TRUE))
+
+
+
+
+```
+
+
+```{r result_age_table}
+
+# Cast ageres into a more suitable table format
+ageres.melt <- melt(ageres,
+                    id.var = c("result_class", "age.grp"),
+                    measure.var = c("freq", "per"))
+
+ageres.wide <- dcast(ageres.melt,
+                     result_class ~ age.grp + variable,
+                     value.var = "value")
+
+# Convert N columns to integers
+ageres.wide$`2-5_freq` <- as.character(ageres.wide$`2-5_freq`)
+ageres.wide$`6-12_freq` <- as.character(ageres.wide$`6-12_freq`)
+ageres.wide$`13-25_freq` <- as.character(ageres.wide$`13-25_freq`)
+ageres.wide$`26-39_freq` <- as.character(ageres.wide$`26-39_freq`)
+ageres.wide$`40+_freq` <- as.character(ageres.wide$`40+_freq`)
+
+
+# Prettier names
+names(ageres.wide) <- c("Results",
+                        "Ages 2-5: N", "Ages 2-5: %",
+                        "Ages 6-12: N", "Ages 6-12: %",
+                        "Ages 13-25: N", "Ages 13-25: %",
+                        "Ages 26-39: N", "Ages 26-39: %",
+                        "Ages 40+: N", "Ages 40+: %")
+
+
+dfprintif(ageres.wide)
+
+```
+
+
 
 
 ### Test Results Over the Enrollment Period
