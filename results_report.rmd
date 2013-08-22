@@ -43,23 +43,21 @@ local_facts <- read.csv("local_facts.csv")
 # Load the latest cleaned data
 load(local_facts$datapath)
 
-# Set aside those who were successfully enrolled during the 
-# in question - we'll generally disregard those who declined 
-# or who didn't complete enrollment 
+# Set aside those who were successfully enrolled - we'll generally disregard 
+# those who declined or who didn't complete enrollment 
 
 enrolled <- with(to1clean$master,
     StudyID[!CloseReason %in% c("Didn't complete enrollment", 
                                 "Withdrew", 
-                                "Not eligible") &
-            EnrollDate >= as.Date(local_facts$period_start) &
-            EnrollDate <= as.Date(local_facts$period_end)]
+                                "Not eligible")]
 )
 
 
 # Set up subsets of just the participants enrolled this period
 enrolled_master <- to1clean$master[to1clean$master$StudyID %in% enrolled, ]
 
-enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyID %in% enrolled, ]
+enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyID 
+                                             %in% enrolled, ]
 
 
 
@@ -76,7 +74,6 @@ result_class_order <- c("Triple Positive",
 ```
 
 <h1 class='maintitle'>TBESC TO 1 Results Summary: `r local_facts$site`</h1>
-<h3 class='maintitle'>Enrollment Period: `r paste(local_facts$period_start, "through", local_facts$period_end)`</h3>
 <span class='maintitle'>Report generated at `r format(Sys.time())`</span>
 
 
