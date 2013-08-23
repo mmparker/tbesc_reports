@@ -90,7 +90,7 @@ Total Enrolled to Date: `r total_enrolled`
 
 
 
-### Eligibility Criteria
+## Eligibility Criteria
 ```{r eligcrit}
 
 # Get eligibility criteria from the preenrollments
@@ -136,7 +136,7 @@ dfprintif(crit.table)
 
 
 
-### Gender
+## Gender
 ```{r gender}
 
 # Summarize
@@ -163,7 +163,7 @@ dfprintif(gender)
 
 
 
-### Participant Ages
+## Participant Ages
 ```{r ages, fig.width=10}
 
 ggplot(enrolled_preenroll, aes(x = AgeAtEnrollment, y = ..count../sum(..count..))) +
@@ -179,7 +179,7 @@ Median Age of Participants: `r median(enrolled_preenroll$AgeAtEnrollment, na.rm 
 
 
 
-### Participants by Country of Origin
+## Participants by Country of Origin
 ```{r,results="hide",fig.width = 8, fig.height = 8}
 
 # Tally up participants by their country of birth
@@ -207,10 +207,10 @@ ggplot(birthco, aes(x = BirthCountry, weight = freq)) +
 ```
 
 
-### Test Results
+## Test Results
 
 ```{r,results='hide'}
-##################################################
+##################################
 # Summarize participants' individual test results
 testres <- compile_results(to1clean)
 
@@ -240,7 +240,7 @@ testwide <- testwide[ , c("variable", "Negative", "Positive",
 names(testwide)[names(testwide) %in% "variable"] <- "Test"
 
 
-##################################################
+##################################
 # Individual test results - proportions
 testwide.prop <- dcast(
                      melt(testres_enrolled,
@@ -265,7 +265,7 @@ names(testwide.prop)[names(testwide.prop) %in% "variable"] <- "Test"
 
 
 
-##################################################
+##################################
 # Aggregate by result class
 testagg <- count(testres_enrolled, var = c("result_class"))
 
@@ -275,7 +275,7 @@ testres_enrolled$plot_class <- factor(testres_enrolled$result_class,
 
 
 
-##################################################
+##################################
 # Make a factor of result_class for the table - this is more a logical ordering:
 # Triple-neg, triple-pos, isolated-pos, isolated-neg
 testagg$result_class <- factor(testagg$result_class,
@@ -337,7 +337,7 @@ dfprint(arrange(testagg, Results))
 
 
 
-### Test Positivity by Age Group
+## Test Positivity by Age Group
 
 ```{r posbyagegrp}
 
@@ -410,7 +410,7 @@ ggplot(testage.melt,
 
 
 
-### Test Results by Age Group
+## Test Results by Age Group
 
 
 
@@ -454,7 +454,7 @@ ggplot(ageres, aes(x = age.grp, weight = per, fill = result_class)) +
 
 
 
-#### How much is increasing positivity driven by the triple-positives?
+### How much is increasing positivity driven by the triple-positives?
 
 ```{r notrippos}
 
@@ -517,7 +517,141 @@ dfprintif(ageres.wide)
 
 
 
-### Test Results Over the Enrollment Period
+## Quantitative Test Results
+```{r quantres}
+
+
+# Set up a color scale for results
+resultcolors <- c("#F03B20", "#1F78B4", "#31A354", "grey", "grey", "grey")
+
+names(resultcolors) <- c("Negative", "Positive", 
+                         "Borderline",
+                         "Indeterminate", "Invalid", "Test Not Performed")
+
+
+# Set up result factors for nicer ordering
+to1clean$qft$result.ord <- factor(to1clean$qft$result,
+                                  levels = c("Negative", "Positive",
+                                             "Indeterminate"))
+
+
+to1clean$tspot$result.ord <- factor(to1clean$tspot$result,
+                                   levels = c("Negative", "Borderline",
+                                              "Positive", "Invalid",
+                                              "Test Not Performed"))
+
+
+ggplot(to1clean$skintest, aes(x = indur_mm)) +
+    geom_histogram(aes(fill = result), binwidth = 1) +
+    geom_vline(xintercept = 10, color = "red") +
+    labs(x = "TST Induration (mm)", 
+         y = "Frequency",
+         title = "TST Induration Sizes") +
+    scale_x_continuous(breaks = seq(0, 100, 5)) +
+    scale_fill_manual("Result", values = resultcolors) +
+    theme_bw()
+
+
+ggplot(to1clean$qft, aes(x = tbnil.num)) +
+    geom_histogram(aes(fill = result.ord), binwidth = 0.05) +
+    geom_vline(xintercept = 0.35, color = "red") +
+    labs(x = "TB - Nil (IU/mL)", 
+         y = "Frequency",
+         title = "Quantiferon TB - Nil Results") +
+    scale_x_continuous(breaks = c(seq(-10, 0, 0.5), 0.35, seq(1, 10, 0.5))) +
+    scale_fill_manual("Result", values = resultcolors) +
+    theme_bw()
+
+
+ggplot(to1clean$tspot, aes(x = tbnil.max)) +
+    geom_histogram(aes(fill = result.ord), binwidth = 1) +
+    geom_vline(xintercept = c(5, 8), color = "red") +
+    labs(x = "Maximum TB - Nil Result (spots)", 
+         y = "Frequency",
+         title = "TSPOT TB - Nil Results") +
+    scale_x_continuous(breaks = c(seq(-20, 5, 5), 8, seq(10, 100, 5))) +
+    scale_fill_manual("Result", values = resultcolors) +
+    theme_bw()
+
+
+```
+
+
+
+## Quantitative Test Results By Age
+```{r quantres_age}
+
+
+
+# Set up defined shapes for the results
+resultshapes <- c(15, 3, 18, 13, 13, 13)
+
+names(resultshapes) <- c("Negative", "Positive", 
+                         "Borderline",
+                         "Indeterminate", "Invalid", "Test Not Performed")
+
+
+# Merge ages onto quantitative results
+tstage <- merge(x = to1clean$skintest,
+                y = enrolled_preenroll[c("StudyID", "AgeAtEnrollment")],
+                by = "StudyID",
+                all.x = TRUE)
+
+qftage <- merge(x = to1clean$qft,
+                y = enrolled_preenroll[c("StudyID", "AgeAtEnrollment")],
+                by = "StudyID",
+                all.x = TRUE)
+
+tspotage <- merge(x = to1clean$tspot,
+                  y = enrolled_preenroll[c("StudyID", "AgeAtEnrollment")],
+                  by = "StudyID",
+                  all.x = TRUE)
+
+
+
+ggplot(tstage, aes(x = AgeAtEnrollment, y = indur_mm)) +
+    geom_jitter(aes(color = result, shape = result), size = 3, alpha = 0.7) +
+    geom_hline(yintercept = 10, color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "Induration (mm)",
+         title = "TST Induration Sizes by Age (jittered)") +
+    scale_x_continuous(breaks = seq(0, 100, 5)) +
+    scale_color_manual("Result", values = resultcolors) +
+    scale_shape_manual("Result", values = resultshapes) +
+    theme_bw()
+
+
+ggplot(qftage, aes(x = AgeAtEnrollment, y = tbnil.num)) +
+    geom_jitter(aes(color = result, shape = result), size = 3, alpha = 0.7) +
+    geom_hline(yintercept = 0.35, color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "TB - Nil Results (IU/mL)",
+         title = "Quantiferon TB - Nil Results by Age (jittered)") +
+    scale_x_continuous(breaks = seq(0, 100, 5)) +
+    scale_y_continuous(breaks = c(seq(-10, 0, 0.5), 0.35, seq(1, 10, 0.5))) +
+    scale_color_manual("Result", values = resultcolors) +
+    scale_shape_manual("Result", values = resultshapes) +
+    theme_bw()
+
+
+ggplot(tspotage, aes(x = AgeAtEnrollment, y = tbnil.max)) +
+    geom_jitter(aes(color = result, shape = result), size = 3, alpha = 0.7) +
+    geom_hline(yintercept = c(5, 8), color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "Maximum TB - Nil Result (spots)",
+         title = "TSPOT TB - Nil Results by Age (jittered)") +
+    scale_x_continuous(breaks = seq(0, 100, 5)) +
+    scale_y_continuous(breaks = c(seq(-20, 5, 5), 8, seq(10, 100, 5))) +
+    scale_color_manual("Result", values = resultcolors) +
+    scale_shape_manual("Result", values = resultshapes) +
+    theme_bw()
+
+
+
+```
+
+
+## Test Results Over the Enrollment Period
 
 ```{r tests_overtime}
 
@@ -571,7 +705,7 @@ ggplot(monthcount, aes(x = EnrollMonth,
 
 
 
-### Treatment Outcomes By Test Result
+## Treatment Outcomes By Test Result
 
 
 ```{r tx_outcomes}
@@ -684,7 +818,7 @@ dfprintif(pos_tx[ , names(pos_tx)[!names(pos_tx) %in% "drop"]])
 
 
 
-### Treatment Outcomes By Result Group
+## Treatment Outcomes By Result Group
 
 
 ```{r print_class_tx}
@@ -705,12 +839,12 @@ dfprintif(arrange(result_class_tx, `Result Class`))
 
 
 
-### Test Results by Country of Origin
+## Test Results by Country of Origin
 
 
 
 
-### Test Results by Risk Factors
+## Test Results by Risk Factors
 
 
 
@@ -719,7 +853,7 @@ dfprintif(arrange(result_class_tx, `Result Class`))
 
 
 
-### TB Disease
+## TB Disease
 
 
 
