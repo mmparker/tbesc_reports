@@ -71,6 +71,30 @@ result_class_order <- c("Triple Positive",
 
 
 
+# Cut ages into groups
+to1clean$preenrollment$age.grp <- NA
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 2 &
+                to1clean$preenrollment$AgeAtEnrollment <= 5] <- "2-5"
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 6 &
+                to1clean$preenrollment$AgeAtEnrollment <= 12] <- "6-12"
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 13 &
+                to1clean$preenrollment$AgeAtEnrollment <= 25] <- "13-25"
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 26 &
+                to1clean$preenrollment$AgeAtEnrollment <= 39] <- "26-39"
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 40] <- "40+"
+
+# Make it an ordered factor - keeps plots, tables, etc. in sensible order
+to1clean$preenrollment$age.grp <- factor(to1clean$preenrollment$age.grp, 
+                          levels = c("2-5", "6-12", "13-25", 
+                                     "26-39", "40+"),
+                          ordered = TRUE
+)
+
+
+
+
+
+
 ```
 
 <h1 class='maintitle'>TBESC TO 1 Results Summary: `r local_facts$site`</h1>
@@ -342,32 +366,11 @@ dfprint(arrange(testagg, Results))
 ```{r posbyagegrp}
 
 
-# Add age to the test results
+# Add age and age group to the test results
 testage <- merge(x = testres,
                  y = to1clean$preenrollment[ , 
-                         c("StudyID", "AgeAtEnrollment")],
+                         c("StudyID", "AgeAtEnrollment", "age.grp")],
                  all.x = TRUE)
-
-
-# Group by age
-testage$age.grp <- NA
-testage$age.grp[testage$AgeAtEnrollment >= 2 &
-                testage$AgeAtEnrollment <= 5] <- "2-5"
-testage$age.grp[testage$AgeAtEnrollment >= 6 &
-                testage$AgeAtEnrollment <= 12] <- "6-12"
-testage$age.grp[testage$AgeAtEnrollment >= 13 &
-                testage$AgeAtEnrollment <= 25] <- "13-25"
-testage$age.grp[testage$AgeAtEnrollment >= 26 &
-                testage$AgeAtEnrollment <= 39] <- "26-39"
-testage$age.grp[testage$AgeAtEnrollment >= 40] <- "40+"
-
-# Make it an ordered factor - keeps plots, tables, etc. in sensible order
-testage$age.grp <- factor(testage$age.grp, 
-                          levels = c("2-5", "6-12", "13-25", 
-                                     "26-39", "40+"),
-                          ordered = TRUE
-)
-
 
 
 # Aggregate by age
