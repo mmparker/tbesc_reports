@@ -663,6 +663,142 @@ ggplot(tspotage, aes(x = AgeAtEnrollment, y = tbnil.max)) +
 ```
 
 
+
+```{r mitonilbyage}
+
+qftage.m <- melt(qftage,
+                 id.vars = c("StudyID", "age.grp"),
+                 measure.vars = c("nil.num", "mito.num"))
+
+tspotage.m <- melt(tspotage,
+                   id.vars = c("StudyID", "age.grp"),
+                   measure.vars = c("nil.num", "mito.num"))
+
+
+# Nicer labels
+levels(qftage.m$variable) <- c("Nil", "Mitogen")
+levels(tspotage.m$variable) <- c("Nil", "Mitogen")
+
+
+
+ggplot(qftage.m, aes(x = age.grp, y = value)) +
+    geom_boxplot(aes(fill = variable)) +
+    geom_hline(yintercept = 0.35, color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "Quantitative Result (IU/mL)",
+         title = "Quantiferon Nil and Mitogen Results by Age") +
+    scale_y_continuous(breaks = c(seq(-10, 0, 1), 0.35, seq(1, 10, 1))) +
+    scale_fill_manual("Result", values = unname(resultcolors)) +
+    theme_bw()
+
+
+
+ggplot(tspotage.m, aes(x = age.grp, y = value)) +
+    geom_jitter(aes(color = variable)) +
+    geom_hline(yintercept = c(5, 8), color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "Quantitative Result (spots)",
+         title = "TSPOT Nil and Mitogen Results by Age") +
+    scale_y_continuous(breaks = c(seq(-20, 5, 5), 8, seq(10, 100, 5))) +
+    scale_color_manual("Result", values = unname(resultcolors)) +
+    theme_bw()
+
+
+
+```
+
+
+
+```{r qftmodel, results='hide'}
+
+
+qftage.meltall <- melt(qftage,
+                       id.vars = c("StudyID", "AgeAtEnrollment"),
+                       measure.vars = c("nil.num", "tb.num", "mito.num"))
+
+
+# ggplot(qftage.meltall, aes(x = value, y = ..count..)) +
+#     geom_histogram(binwidth = 0.5)
+
+
+# With TB
+qftmod.var <- lm(value ~ variable, data = qftage.meltall)
+summary(qftmod.var)
+# qplot(resid(qftmod.var), binwidth = 0.50)
+
+qftmod.age <- lm(value ~ variable * AgeAtEnrollment, data = qftage.meltall)
+summary(qftmod.age)
+# qplot(resid(qftmod.age), binwidth = 0.50)
+
+AIC(qftmod.var)
+AIC(qftmod.age)
+
+
+
+# Without TB
+qftage.notb <- subset(qftage.meltall, variable %in% c("nil.num", "mito.num"))
+
+qftnotb.var <- lm(value ~ variable, data = qftage.notb)
+summary(qftnotb.var)
+# qplot(resid(qftnotb.var), binwidth = 0.50)
+
+qftnotb.age <- lm(value ~ variable * AgeAtEnrollment, data = qftage.notb)
+summary(qftnotb.age)
+# qplot(resid(qftnotb.age), binwidth = 0.50)
+
+AIC(qftnotb.var)
+AIC(qftnotb.age)
+
+```
+
+
+```{r tspotmodel, results='hide'}
+
+
+tspotage.meltall <- melt(tspotage,
+                       id.vars = c("StudyID", "AgeAtEnrollment"),
+                       measure.vars = c("nil.num", "mito.num",
+                                        "panel_a.num", "panel_b.num"))
+
+
+# ggplot(tspotage.meltall, aes(x = value, y = ..count..)) +
+#     geom_histogram(binwidth = 0.5)
+
+
+# Truncate values to 20
+#tspotage.meltall$value[tspotage.meltall$value > 20] <- 20
+
+# With TB
+tspotmod.var <- lm(value ~ variable, data = tspotage.meltall)
+summary(tspotmod.var)
+# qplot(resid(tspotmod.var), binwidth = 0.50)
+
+tspotmod.age <- lm(value ~ variable * AgeAtEnrollment, data = tspotage.meltall)
+summary(tspotmod.age)
+# qplot(resid(tspotmod.age), binwidth = 0.50)
+
+AIC(tspotmod.var)
+AIC(tspotmod.age)
+
+
+
+# Without TB
+tspotage.notb <- subset(tspotage.meltall, variable %in% c("nil.num", "mito.num"))
+
+tspotnotb.var <- lm(value ~ variable, data = tspotage.notb)
+summary(tspotnotb.var)
+# qplot(resid(tspotnotb.var), binwidth = 0.50)
+
+tspotnotb.age <- lm(value ~ variable * AgeAtEnrollment, data = tspotage.notb)
+summary(tspotnotb.age)
+# qplot(resid(tspotnotb.age), binwidth = 0.50)
+
+AIC(tspotnotb.var)
+AIC(tspotnotb.age)
+
+```
+
+
 ## Test Results Over the Enrollment Period
 
 ```{r tests_overtime}
