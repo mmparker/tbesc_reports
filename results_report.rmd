@@ -561,7 +561,7 @@ ggplot(to1clean$qft, aes(x = tbnil.num)) +
     labs(x = "TB - Nil (IU/mL)", 
          y = "Frequency",
          title = "Quantiferon TB - Nil Results") +
-    scale_x_continuous(breaks = c(seq(-10, 0, 0.5), 0.35, seq(1, 10, 0.5))) +
+    scale_x_continuous(breaks = c(seq(-10, 0, 1), 0.35, seq(1, 10, 1))) +
     scale_fill_manual("Result", values = resultcolors) +
     theme_bw()
 
