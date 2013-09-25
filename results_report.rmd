@@ -581,6 +581,31 @@ ggplot(to1clean$tspot, aes(x = tbnil.max)) +
 
 
 
+## TST Induration Size by BCG Status
+
+```{r tst_by_bcg, res = '300px'}
+
+# Add BCG status to TST results
+tst_bcg <- merge(x = to1clean$skintest,
+                 y = to1clean$medicalhistory[c("StudyID", "BcgVaccine")],
+                 all.x = TRUE,
+                 by = "StudyID")
+
+
+
+ggplot(tst_bcg, aes(x = BcgVaccine, y = indur_mm)) +
+    geom_violin(fill = alpha(colorwheel[3], 0.1), scale = "area") +
+    geom_boxplot(width = 0.1, fill = alpha(colorwheel[3], 0.5)) +
+    stat_summary(fun.y = "median", geom = "point") +
+    labs(x = "BCG Status",
+         y = "TST Induration (mm)") +
+    theme_bw()
+
+
+```
+
+
+
 ## Quantitative Test Results By Age
 ```{r quantres_age}
 
