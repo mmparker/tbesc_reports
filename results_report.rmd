@@ -883,7 +883,7 @@ ggplot(monthcount, aes(x = EnrollMonth,
 # in Treatment Outcomes By Test Result below
 regimens <- subset(to1clean$ltbi,
                    subset = OfferTreatment,
-                   select = c("StudyID", 
+                   select = c("StudyID", "OfferDate",
                               "OfferTreatment", "AcceptTreatment",
                               "plan", "TreatmentComplete")
 )
@@ -920,6 +920,50 @@ names(regimen_table) <- c("Regimen", "N Started", "% Started", "% Completed")
 
 
 dfprintif(arrange(regimen_table, desc(`N Started`)))
+
+
+```
+
+
+
+## Regimen Starts Over Time
+
+```{r reg_over_time}
+
+# Aggregate by... quarter?
+regimens$offer_qtr <- paste0(
+    format(regimens$OfferDate, "%Y"),
+    " Q",
+    (as.numeric(format(regimens$OfferDate, "%m")) + 2) %/% 3)
+
+
+# Convert plan to a factor so that plans get at least a zero-count in all quarters
+regimens$plan.f <- factor(regimens$plan)
+
+reg_over_time <- ddply(regimens, .var = "offer_qtr", .fun = function(x) {
+    
+    # Aggregate by plan
+    plan_count <- with(x, as.data.frame(table(plan.f)))
+    
+    plan_count$prop <- plan_count$Freq / sum(plan_count$Freq)
+    
+    plan_count
+    
+})
+
+
+    
+ggplot(reg_over_time, aes(x = offer_qtr, y = prop, color = plan.f)) +
+    geom_point(aes(size = Freq)) +
+    geom_line(aes(group = plan.f), size = 1.2) +
+    labs(x = "Quarter Offered",
+         y = "Percent of Participants Who Initiated Treatment") +
+    scale_color_brewer("Tx Regimen", palette = "Paired") +
+    scale_y_continuous(labels = percent) +
+    scale_size_continuous("Number Starting Tx", range = c(3, 10)) +
+    theme_bw() + theme(legend.key.width = unit(1, "in"))
+
+
 
 
 ```
