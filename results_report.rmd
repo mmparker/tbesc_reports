@@ -875,7 +875,54 @@ ggplot(monthcount, aes(x = EnrollMonth,
 
 ```
 
+## Treatment Overview
 
+```{r tx_regimens}
+
+# Get the tx info from DMS - probably a way to refactor with the (older) code
+# in Treatment Outcomes By Test Result below
+regimens <- subset(to1clean$ltbi,
+                   subset = OfferTreatment,
+                   select = c("StudyID", 
+                              "OfferTreatment", "AcceptTreatment",
+                              "plan", "TreatmentComplete")
+)
+
+n_offered <- sum(regimens$OfferTreatment, na.rm = TRUE)
+n_accepted <- sum(regimens$AcceptTreatment, na.rm = TRUE)
+per_accepted <- calc_percent(n_accepted, n_offered, digits = 0)
+
+
+```
+
+
+A total of `r n_offered` participants have been
+offered treatment; `r n_accepted` (`r per_accepted`%) accepted treatment.
+
+
+```{r regimen_table}
+
+# Aggregate the regimens
+regimen_table <- ddply(subset(regimens, AcceptTreatment), 
+                       .var = "plan", 
+                       .fun = summarise,
+                       
+    n_reg = length(StudyID),
+    per_reg = calc_percent(n_reg, n_accepted, digits = 1),
+    per_completed = calc_percent(sum(TreatmentComplete, na.rm = TRUE),
+                                 n_reg,
+                                 digits = 1)
+                       
+)
+
+# Nicer names
+names(regimen_table) <- c("Regimen", "N Started", "% Started", "% Completed")
+
+
+dfprintif(arrange(regimen_table, desc(`N Started`)))
+
+
+```
 
 
 ## Treatment Outcomes By Test Result
@@ -1012,12 +1059,6 @@ dfprintif(arrange(result_class_tx, `Result Class`))
 
 
 
-## Test Results by Country of Origin
-
-
-
-
-## Test Results by Risk Factors
 
 
 
@@ -1026,7 +1067,21 @@ dfprintif(arrange(result_class_tx, `Result Class`))
 
 
 
-## TB Disease
+### Test Results by Country of Origin
+
+
+
+
+### Test Results by Risk Factors
+
+
+
+
+
+
+
+
+### TB Disease
 
 
 
