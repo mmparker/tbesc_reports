@@ -643,25 +643,24 @@ tspotage <- merge(x = to1clean$tspot,
 
 
 
-ggplot(tstage, aes(x = AgeAtEnrollment, y = indur_mm)) +
-    geom_jitter(aes(color = result, shape = result), size = 3, alpha = 0.7) +
+
+ggplot(tstage, aes(x = age.grp, y = indur_mm)) +
+    geom_boxplot(fill = colorwheel[2]) +
     geom_hline(yintercept = 10, color = "red") +
     labs(x = "Age At Enrollment", 
          y = "Induration (mm)",
-         title = "TST Induration Sizes by Age (jittered)") +
-    scale_x_continuous(breaks = seq(0, 100, 5)) +
+         title = "TST Induration Sizes by Age Group") +
     scale_color_manual("Result", values = resultcolors) +
     scale_shape_manual("Result", values = resultshapes) +
     theme_bw()
 
 
-ggplot(qftage, aes(x = AgeAtEnrollment, y = tbnil.num)) +
-    geom_jitter(aes(color = result, shape = result), size = 3, alpha = 0.7) +
+ggplot(qftage, aes(x = age.grp, y = tbnil.num)) +
+    geom_boxplot(fill = colorwheel[2]) +
     geom_hline(yintercept = 0.35, color = "red") +
     labs(x = "Age At Enrollment", 
          y = "TB - Nil Results (IU/mL)",
-         title = "Quantiferon TB - Nil Results by Age (jittered)") +
-    scale_x_continuous(breaks = seq(0, 100, 5)) +
+         title = "Quantiferon TB - Nil Results by Age Group") +
     scale_y_continuous(breaks = c(seq(-10, 0, 1), 0.35, seq(1, 10, 1))) +
     scale_color_manual("Result", values = resultcolors) +
     scale_shape_manual("Result", values = resultshapes) +
@@ -669,15 +668,12 @@ ggplot(qftage, aes(x = AgeAtEnrollment, y = tbnil.num)) +
 
 
 
-
-
-ggplot(tspotage, aes(x = AgeAtEnrollment, y = tbnil.max)) +
-    geom_jitter(aes(color = result, shape = result), size = 3, alpha = 0.7) +
+ggplot(tspotage, aes(x = age.grp, y = tbnil.max)) +
+    geom_boxplot(fill = colorwheel[2]) +
     geom_hline(yintercept = c(5, 8), color = "red") +
     labs(x = "Age At Enrollment", 
          y = "Maximum TB - Nil Result (spots)",
-         title = "TSPOT TB - Nil Results by Age (jittered)") +
-    scale_x_continuous(breaks = seq(0, 100, 5)) +
+         title = "TSPOT TB - Nil Results by Age Group") +
     scale_y_continuous(breaks = c(seq(-20, 5, 5), 8, seq(10, 100, 5))) +
     scale_color_manual("Result", values = resultcolors) +
     scale_shape_manual("Result", values = resultshapes) +
