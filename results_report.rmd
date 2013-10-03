@@ -231,6 +231,87 @@ ggplot(birthco, aes(x = BirthCountry, weight = freq)) +
 ```
 
 
+
+## Participants' Languages
+
+```{r partlang}
+
+# Convert all langauges to lower case for counting
+enrolled_master$interplang <- gsub(
+    x = tolower(enrolled_master$InterpreterLanguage),
+    pattern = "(^\\w)(.*$)",
+    replacement = "\\U\\1\\E\\2",
+    perl = TRUE)
+            
+
+# A blank means no interpreter was needed (right?)
+#count(to1clean$master, vars = c("InterpreterNeeded", "InterpreterLanguage"))
+
+# Recode blanks accordingly
+enrolled_master$interplang[enrolled_master$interplang %in% ""] <- "No Interpreter"
+
+
+
+# Aggregate
+lang <- arrange(count(enrolled_master, var = "interplang"), 
+                   freq, interplang)
+
+
+
+# Make interplang a factor - this ensures descending order of the bars
+lang$interplang <- factor(lang$interplang,  
+                          levels = lang$interplang)
+
+ggplot(lang, aes(x = interplang, weight = freq)) +
+    geom_histogram() +
+    coord_flip() +
+    labs(title = "Enrollment by language of interpretation",
+         x = "Language",
+         y = "Number Enrolled") +
+    theme_tbesc
+
+
+
+```
+
+
+
+## Semiannual Follow-Ups By Language
+
+```{r fu_lang}
+
+
+# Merge language onto the follow-ups
+fu_lang <- merge(x = subset(to1clean$followupfortb,
+                            subset = is.na(ParticipantLost),
+                            select = c("StudyID", "VisitDate")),
+                 y = enrolled_master[c("StudyID", "interplang")],
+                 by = "StudyID",
+                 all.x = TRUE)
+
+# Aggregate
+fu_lang_count <- arrange(count(fu_lang, "interplang"),
+                         freq, interplang)
+
+# Make interplang a factor - this ensures descending order of the bars
+fu_lang_count$interplang <- factor(fu_lang_count$interplang,  
+                                   levels = fu_lang_count$interplang)
+
+
+ggplot(fu_lang_count, aes(x = interplang, weight = freq)) +
+    geom_histogram() +
+    coord_flip() +
+    labs(title = "Follow-ups by language of interpretation",
+         x = "Language",
+         y = "Number of Follow-ups") +
+    theme_tbesc
+
+
+
+```
+
+
+
 ## Test Results
 
 ```{r,results='hide'}
