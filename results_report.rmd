@@ -965,6 +965,8 @@ regimens <- subset(to1clean$ltbi,
                               "plan", "TreatmentComplete")
 )
 
+
+
 n_offered <- sum(regimens$OfferTreatment, na.rm = TRUE)
 n_accepted <- sum(regimens$AcceptTreatment, na.rm = TRUE)
 per_accepted <- calc_percent(n_accepted, n_offered, digits = 0)
@@ -979,6 +981,29 @@ offered treatment; `r n_accepted` (`r per_accepted`%) accepted treatment.
 
 ```{r regimen_table}
 
+
+# Create a flag for those who have had sufficient time to complete treatment
+# This doesn't yet account for multiple regimens per person
+regimens$enough_time <- FALSE
+
+regimens$enough_time[regimens$AcceptTreatment &
+                     regimens$plan %in% "Daily INH" &
+                     (Sys.Date() - regimens$OfferDate > (9 * 31))] <- TRUE
+    
+regimens$enough_time[regimens$AcceptTreatment &
+                     regimens$plan %in% "Daily RIF" &
+                     (Sys.Date() - regimens$OfferDate > (4 * 31))] <- TRUE
+
+regimens$enough_time[regimens$AcceptTreatment &
+                     regimens$plan %in% "Weekly INH/Rifapentine" &
+                     (Sys.Date() - regimens$OfferDate > (12 * 7))] <- TRUE
+
+# Don't know how long this should really go on... not more than a year, though.
+regimens$enough_time[regimens$AcceptTreatment &
+                     regimens$plan %in% "Twice-weekly INH" &
+                     (Sys.Date() - regimens$OfferDate > 365)] <- TRUE
+
+    
 # Aggregate the regimens
 regimen_table <- ddply(subset(regimens, AcceptTreatment), 
                        .var = "plan", 
@@ -987,7 +1012,7 @@ regimen_table <- ddply(subset(regimens, AcceptTreatment),
     n_reg = length(StudyID),
     per_reg = calc_percent(n_reg, n_accepted, digits = 1),
     per_completed = calc_percent(sum(TreatmentComplete, na.rm = TRUE),
-                                 n_reg,
+                                 sum(enough_time),
                                  digits = 1)
                        
 )
@@ -1000,6 +1025,11 @@ dfprintif(arrange(regimen_table, desc(`N Started`)))
 
 
 ```
+
+Note: treatment completion figures calculated using only participants whose 
+regimens have had sufficient time to be completed (e.g., nine months 
+for daily INH).
+
 
 
 
@@ -1051,17 +1081,10 @@ ggplot(reg_over_time, aes(x = offer_qtr, y = prop, color = plan.f)) +
 
 ```{r tx_outcomes}
 
-# Summarize the treatment information in DMS
-dms_tx <- subset(to1clean$ltbi, 
-                 select = c("StudyID", "OfferTreatment", "OfferDate",
-                            "AcceptTreatment", "ScriptPickUpDate", 
-                            "TreatmentComplete")
-)
 
-
-# Merge onto test results
+# Merge treatment info onto test results
 tx_test <- merge(x = testres,
-                 y = dms_tx,
+                 y = regimens,
                  by = "StudyID",
                  all.x = TRUE)
 
@@ -1069,7 +1092,8 @@ tx_test <- merge(x = testres,
 # Summarize by single test results
 tx_test_melt <- melt(tx_test,
                      id.var = c("StudyID", "OfferTreatment",
-                                "AcceptTreatment", "TreatmentComplete"),
+                                "AcceptTreatment", "enough_time",
+                                "TreatmentComplete"),
                      measure.var = c("tst", "qft", "tspot")
 )
                      
@@ -1082,8 +1106,10 @@ result_tx  <- ddply(tx_test_melt,
     per_offered = round(n_offered / n * 100, 2),
     n_accepted = sum(AcceptTreatment, na.rm = TRUE),
     per_accepted = round(n_accepted / n_offered * 100, 2),
-    n_completed = sum(TreatmentComplete, na.rm = TRUE),
-    per_completed = round(n_completed / n_accepted * 100, 2)
+    n_completed = sum(TreatmentComplete[enough_time], na.rm = TRUE),
+    per_completed = calc_percent(n_completed,
+                                 sum(AcceptTreatment[enough_time], na.rm = TRUE),
+                                 digits = 2)
                     
 )
 
@@ -1107,8 +1133,10 @@ result_class_tx  <- ddply(tx_test,
     per_offered = round(n_offered / n * 100, 2),
     n_accepted = sum(AcceptTreatment, na.rm = TRUE),
     per_accepted = round(n_accepted / n_offered * 100, 2),
-    n_completed = sum(TreatmentComplete, na.rm = TRUE),
-    per_completed = round(n_completed / n_accepted * 100, 2)
+    n_completed = sum(TreatmentComplete[enough_time], na.rm = TRUE),
+    per_completed = calc_percent(n_completed,
+                                 sum(AcceptTreatment[enough_time], na.rm = TRUE),
+                                 digits = 2)
                     
 )
 
@@ -1154,7 +1182,9 @@ dfprintif(pos_tx[ , names(pos_tx)[!names(pos_tx) %in% "drop"]])
 
 ```
 
-
+Note: treatment completion figures calculated using only participants whose 
+regimens have had sufficient time to be completed (e.g., nine months 
+for daily INH).
 
 
 
@@ -1178,7 +1208,9 @@ dfprintif(arrange(result_class_tx, `Result Class`))
 
 ```
 
-
+Note: treatment completion figures calculated using only participants whose 
+regimens have had sufficient time to be completed (e.g., nine months 
+for daily INH).
 
 
 
