@@ -1011,14 +1011,14 @@ regimen_table <- ddply(subset(regimens, AcceptTreatment),
                        
     n_reg = length(StudyID),
     per_reg = calc_percent(n_reg, n_accepted, digits = 1),
-    per_completed = calc_percent(sum(TreatmentComplete, na.rm = TRUE),
+    per_completed = calc_percent(sum(TreatmentComplete[enough_time], na.rm = TRUE),
                                  sum(enough_time),
                                  digits = 1)
                        
 )
 
 # Nicer names
-names(regimen_table) <- c("Regimen", "N Started", "% Started", "% Completed")
+names(regimen_table) <- c("Regimen", "N Started", "% of Starts", "% Completed")
 
 
 dfprintif(arrange(regimen_table, desc(`N Started`)))
