@@ -984,43 +984,34 @@ offered treatment; `r n_accepted` (`r per_accepted`%) accepted treatment.
 ```{r regimen_table}
 
 
-# Create a flag for those who have had sufficient time to complete treatment
-# This doesn't yet account for multiple regimens per person
-regimens$enough_time <- FALSE
 
-regimens$enough_time[regimens$AcceptTreatment &
-                     regimens$plan %in% "Daily INH" &
-                     (Sys.Date() - regimens$OfferDate > (9 * 31))] <- TRUE
-    
-regimens$enough_time[regimens$AcceptTreatment &
-                     regimens$plan %in% "Daily RIF" &
-                     (Sys.Date() - regimens$OfferDate > (4 * 31))] <- TRUE
 
-regimens$enough_time[regimens$AcceptTreatment &
-                     regimens$plan %in% "Weekly INH/Rifapentine" &
-                     (Sys.Date() - regimens$OfferDate > (12 * 7))] <- TRUE
-
-# Don't know how long this should really go on... not more than a year, though.
-regimens$enough_time[regimens$AcceptTreatment &
-                     regimens$plan %in% "Twice-weekly INH" &
-                     (Sys.Date() - regimens$OfferDate > 365)] <- TRUE
-
-    
 # Aggregate the regimens
 regimen_table <- ddply(subset(regimens, AcceptTreatment), 
                        .var = "plan", 
                        .fun = summarise,
                        
+    # Number and percent of participants started on this regimen
     n_reg = length(StudyID),
     per_reg = calc_percent(n_reg, n_accepted, digits = 1),
-    per_completed = calc_percent(sum(TreatmentComplete[enough_time], na.rm = TRUE),
-                                 sum(enough_time),
+                       
+    # Number of participants eligible to complete - count all who have had
+    # enough_time, as well as any who have already completed
+    n_eligible = sum(TreatmentComplete | enough_time, na.rm = TRUE),
+                       
+    # Number and percent of the eligible who have completed
+    n_completed = sum(TreatmentComplete, na.rm = TRUE),
+    per_completed = calc_percent(n_completed,
+                                 n_eligible,
                                  digits = 1)
                        
 )
 
 # Nicer names
-names(regimen_table) <- c("Regimen", "N Started", "% of Starts", "% Completed")
+names(regimen_table) <- c("Regimen", 
+                          "N Started", "% of Starts", 
+                          "N Eligible to Complete",
+                          "N Completed", "% Completed")
 
 
 dfprintif(arrange(regimen_table, desc(`N Started`)))
@@ -1028,9 +1019,13 @@ dfprintif(arrange(regimen_table, desc(`N Started`)))
 
 ```
 
-Note: treatment completion figures calculated using only participants whose 
-regimens have had sufficient time to be completed (e.g., nine months 
-for daily INH).
+Note: Completion rates are calculated using participants who have had sufficient
+time to complete following CDC guidelines (52 weeks for Daily INH,
+26 weeks for Daily RIF, and
+16 weeks for Weekly INH/Rifapentine).
+
+Participants who have completed treatment are 
+included regardless of time on regimen.
 
 
 
@@ -1098,20 +1093,32 @@ tx_test_melt <- melt(tx_test,
                                 "TreatmentComplete"),
                      measure.var = c("tst", "qft", "tspot")
 )
-                     
+
 result_tx  <- ddply(tx_test_melt, 
                     .var = c("variable", "value"), 
                     .fun = summarise,
                     
+    # Number of participants positive by this test
     n = length(StudyID),
+                    
+    # Number and % of test-pos participants offered treatment
     n_offered = sum(OfferTreatment, na.rm = TRUE),
     per_offered = round(n_offered / n * 100, 2),
+                    
+    # Number and % of test-pos participants who were
+    # offered treatment and accepted
     n_accepted = sum(AcceptTreatment, na.rm = TRUE),
     per_accepted = round(n_accepted / n_offered * 100, 2),
-    n_completed = sum(TreatmentComplete[enough_time], na.rm = TRUE),
+                    
+    # Number of participants eligible to complete - count all who have had
+    # enough_time, as well as any who have already completed
+    n_eligible = sum(TreatmentComplete | enough_time, na.rm = TRUE),
+
+    # Number and percent of the eligible who have completed
+    n_completed = sum(TreatmentComplete, na.rm = TRUE),
     per_completed = calc_percent(n_completed,
-                                 sum(AcceptTreatment[enough_time], na.rm = TRUE),
-                                 digits = 2)
+                                 n_eligible,
+                                 digits = 1)
                     
 )
 
@@ -1130,16 +1137,27 @@ result_class_tx  <- ddply(tx_test,
                     .var = "result_class", 
                     .fun = summarise,
                     
+    # Number of participants with this result class
     n = length(StudyID),
+
+    # Number and % of this class who were offered treatment
     n_offered = sum(OfferTreatment, na.rm = TRUE),
     per_offered = round(n_offered / n * 100, 2),
+
+    # Number and % of this class who were offered treatment and accepted
     n_accepted = sum(AcceptTreatment, na.rm = TRUE),
     per_accepted = round(n_accepted / n_offered * 100, 2),
-    n_completed = sum(TreatmentComplete[enough_time], na.rm = TRUE),
+
+    # Number of participants eligible to complete - count all who have had
+    # enough_time, as well as any who have already completed
+    n_eligible = sum(TreatmentComplete | enough_time, na.rm = TRUE),
+
+    # Number and percent of the eligible who have completed
+    n_completed = sum(TreatmentComplete, na.rm = TRUE),
     per_completed = calc_percent(n_completed,
-                                 sum(AcceptTreatment[enough_time], na.rm = TRUE),
-                                 digits = 2)
-                    
+                                 n_eligible,
+                                 digits = 1)
+
 )
 
 
@@ -1172,9 +1190,11 @@ result_class_tx$n_completed[result_class_tx$n_accepted %in% 0] <- "--"
 
 
 # Prettier names
-names(pos_tx) <- c("Result", "drop", "N", 
+names(pos_tx) <- c("Result", "drop", 
+                   "N", 
                    "N Offered", "% Offered",
                    "N Accepted", "% Accepted",
+                   "N Eligible to Complete",
                    "N Completed", "% Completed")
 
 
@@ -1184,9 +1204,13 @@ dfprintif(pos_tx[ , names(pos_tx)[!names(pos_tx) %in% "drop"]])
 
 ```
 
-Note: treatment completion figures calculated using only participants whose 
-regimens have had sufficient time to be completed (e.g., nine months 
-for daily INH).
+Note: Completion rates are calculated using participants who have had sufficient
+time to complete following CDC guidelines (52 weeks for Daily INH,
+26 weeks for Daily RIF, and
+16 weeks for Weekly INH/Rifapentine).
+
+Participants who have completed treatment are 
+included regardless of time on regimen.
 
 
 
@@ -1201,6 +1225,7 @@ for daily INH).
 names(result_class_tx) <- c("Result Class", "N", 
                             "N Offered", "% Offered",
                             "N Accepted", "% Accepted",
+                            "N Eligible to Complete",
                             "N Completed", "% Completed")
 
 
@@ -1210,9 +1235,13 @@ dfprintif(arrange(result_class_tx, `Result Class`))
 
 ```
 
-Note: treatment completion figures calculated using only participants whose 
-regimens have had sufficient time to be completed (e.g., nine months 
-for daily INH).
+Note: Completion rates are calculated using participants who have had sufficient
+time to complete following CDC guidelines (52 weeks for Daily INH,
+26 weeks for Daily RIF, and
+16 weeks for Weekly INH/Rifapentine).
+
+Participants who have completed treatment are 
+included regardless of time on regimen.
 
 
 
