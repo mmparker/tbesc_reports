@@ -958,13 +958,14 @@ ggplot(monthcount, aes(x = EnrollMonth,
 
 # Get the tx info from DMS - probably a way to refactor with the (older) code
 # in Treatment Outcomes By Test Result below
-regimens <- subset(to1clean$ltbi,
-                   subset = OfferTreatment,
-                   select = c("StudyID", "OfferDate",
-                              "OfferTreatment", "AcceptTreatment",
-                              "plan", "TreatmentComplete")
-)
+# regimens <- subset(to1clean$ltbi,
+#                    subset = OfferTreatment,
+#                    select = c("StudyID", "OfferDate",
+#                               "OfferTreatment", "AcceptTreatment",
+#                               "plan", "TreatmentComplete")
+# )
 
+regimens <- subset(summarize_tx(to1clean), subset = OfferTreatment)
 
 
 n_offered <- sum(regimens$OfferTreatment, na.rm = TRUE)
