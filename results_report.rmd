@@ -943,7 +943,8 @@ ggplot(monthcount, aes(x = EnrollMonth,
     scale_linetype_discrete("Test") +
     scale_size_continuous("# Enrolled") +
     labs(x = "Enrollment Month", y = "Percent Positive") +
-    theme_tbesc 
+    theme_tbesc +
+    theme(axis.text.x = element_text(angle = 70, hjust = 1))
     
     
 
