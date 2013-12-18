@@ -601,6 +601,52 @@ dfprintif(ageres.wide)
 
 
 
+## Test Results by BCG Status
+
+```{r resultsbybcg}
+
+# Add BCG status to the results
+testbcg <- merge(x = testage,
+                 y = to1clean$medicalhistory[c("StudyID", "BcgVaccine")],
+                 by = "StudyID",
+                 all.x = TRUE)
+
+
+# Order BcgVaccine by making it a factor
+testbcg$BcgVaccine <-  factor(testbcg$BcgVaccine,
+                              levels = c("Yes", "No", "Don't Know/Refused"),
+                              ordered = TRUE)
+
+
+# Reorder result_class, too
+testbcg$result_class <- factor(testbcg$result_class,
+    levels = c("Triple Negative", 
+               "Isolated TST+",
+               "Dual Pos, TST and QFT",
+               "Dual Pos, TST and TSPOT",
+               "Isolated QFT+",
+               "Isolated TSPOT+",
+               "Dual Pos, QFT and TSPOT",
+               "Triple Positive",
+               "Inconclusive"),
+    ordered = TRUE
+)
+               
+
+
+ggplot(testbcg, aes(x = result_class)) +
+    geom_bar(aes(fill = BcgVaccine), position = "fill", color = "black") +
+    labs(x = "Result Class",
+         y = "Proportion of Participants in Result Class") +
+    scale_fill_manual("BCG Status", values = c("#1f78b4", "#fb9a99", "#a6cee3")) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 50, hjust = 1))
+
+
+
+```
+
+
 ## Quantitative Test Results
 ```{r quantres}
 
