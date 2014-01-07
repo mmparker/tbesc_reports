@@ -63,10 +63,18 @@ enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyID
 
 # Set a universal order for the result class variable
 result_class_order <- c("Triple Positive", 
-                        "Dual Pos, TST and QFT", "Dual Pos, TST and TSPOT",
-                        "Dual Pos, QFT and TSPOT", "Isolated QFT+", 
-                        "Isolated TSPOT+", "Isolated TST+",
-                        "Triple Negative", "Inconclusive")
+                        "TST+, QFT+, Borderline TSPOT",
+                        "Dual Pos, TST and QFT",
+                        "Dual Pos, TST and TSPOT",
+                        "TST+, QFT-, Borderline TSPOT",
+                        "Dual Pos, QFT and TSPOT", 
+                        "TST-, QFT+, Borderline TSPOT",
+                        "Isolated QFT+", 
+                        "Isolated TSPOT+", 
+                        "Isolated TST+",
+                        "TST-, QFT-, Borderline TSPOT",
+                        "Triple Negative", 
+                        "Inconclusive")
 
 
 
@@ -383,14 +391,21 @@ testres_enrolled$plot_class <- factor(testres_enrolled$result_class,
 # Make a factor of result_class for the table - this is more a logical ordering:
 # Triple-neg, triple-pos, isolated-pos, isolated-neg
 testagg$result_class <- factor(testagg$result_class,
-                               levels = c("Triple Negative", "Triple Positive",
-                                          "Isolated TST+", "Isolated QFT+", 
+                               levels = c("Triple Negative",
+                                          "Triple Positive",
+                                          "Isolated TST+",
+                                          "Isolated QFT+", 
                                           "Isolated TSPOT+",
                                           "Dual Pos, QFT and TSPOT", 
                                           "Dual Pos, TST and TSPOT", 
                                           "Dual Pos, TST and QFT",
+                                          "TST-, QFT-, Borderline TSPOT",
+                                          "TST+, QFT-, Borderline TSPOT",
+                                          "TST-, QFT+, Borderline TSPOT",
+                                          "TST+, QFT+, Borderline TSPOT",
                                           "Inconclusive")
 )
+
 ```
 
 
@@ -447,7 +462,7 @@ dfprint(arrange(testagg, Results))
 
 
 # Add age and age group to the test results
-testage <- merge(x = testres,
+testage <- merge(x = testres_enrolled,
                  y = to1clean$preenrollment[ , 
                          c("StudyID", "AgeAtEnrollment", "age.grp")],
                  all.x = TRUE)
@@ -525,7 +540,7 @@ ggplot(ageres, aes(x = age.grp, weight = per, fill = result_class)) +
     coord_cartesian(y = c(-1, 60)) +
     scale_y_continuous(breaks = seq(0, 100, 10)) +
     scale_fill_manual("Result Group",
-                      values = c(rev(brewer.pal(n = 7, name = "Paired")), 
+                      values = c(rev(brewer.pal(n = 11, name = "Paired")), 
                                  NA, NA)) +
     theme_tbesc +
     guides(fill = guide_legend(reverse = TRUE))
@@ -553,7 +568,7 @@ ggplot(ageres, aes(x = age.grp, weight = per, fill = notrippos)) +
     coord_cartesian(y = c(-1, 60)) +
     scale_y_continuous(breaks = seq(0, 100, 10)) +
     scale_fill_manual("Result Group",
-                      values = c(rev(brewer.pal(n = 7, 
+                      values = c(rev(brewer.pal(n = 11, 
                                                  name = "Paired")[-7]), 
                                  "honeydew", NA, NA)) +
     theme_tbesc +
@@ -951,10 +966,10 @@ AIC(tspotnotb.age)
 ```{r tests_overtime}
 
 # Aggregate by enrollment month
-testres$EnrollMonth <- format(testres$EnrollDate, "%Y-%m")
+testres_enrolled$EnrollMonth <- format(testres_enrolled$EnrollDate, "%Y-%m")
 
 
-monthmelt <- melt(subset(testres, EnrollDate >= as.Date("2012-11-01")),
+monthmelt <- melt(subset(testres_enrolled, EnrollDate >= as.Date("2012-11-01")),
                   id.vars = "EnrollMonth",
                   measure.vars = c("tst", "qft", "tspot"))
 
@@ -1125,7 +1140,7 @@ ggplot(reg_over_time, aes(x = offer_qtr, y = prop, color = plan.f)) +
 
 
 # Merge treatment info onto test results
-tx_test <- merge(x = testres,
+tx_test <- merge(x = testres_enrolled,
                  y = regimens,
                  by = "StudyID",
                  all.x = TRUE)
