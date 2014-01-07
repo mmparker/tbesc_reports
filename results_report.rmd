@@ -1291,8 +1291,46 @@ included regardless of time on regimen.
 
 
 
+### Semiannual Follow-up Results
+
+```{r semiannual_fu}
+
+# Calculate the number of participants eligible for follow-ups
+fu_eligible <- subset(to1clean$master, 
+                      subset = ParticipantStatus %in% c("LTBI Test +",
+                                                        "LTBI Treatment",
+                                                        "LTBI Not Treated"),
+                      select = c("StudyID", "EnrollDate", 
+                                 "BirthCountry", "InterpreterLanguage")
+)
+
+# How have at least one semiannual follow-up record?
+fu_eligible$recorded <- fu_eligible$StudyID %in% to1clean$followupfortb$StudyID
+
+# How many are lost to follow-up?
+fu_eligible$lost <- fu_eligible$StudyID %in%
+    to1clean$followupfortb$StudyID[!is.na(to1clean$followupfortb$ParticipantLost)]
 
 
+# Aggregate
+fu_stats <- summarise(fu_eligible,
+                      n_eligible = length(StudyID),
+                      n_recorded = sum(recorded),
+                      n_lost = sum(lost),
+                      per_lost = calc_percent(n_lost, n_recorded, digits = 1)
+)
+
+
+# Rename for printing
+names(fu_stats) <- c("N Eligible for FU",
+                     "N with 1+ Recorded FU",
+                     "N Lost",
+                     "% Lost")
+
+dfprintif(fu_stats)
+
+
+```
 
 
 
