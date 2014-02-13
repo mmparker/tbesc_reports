@@ -1223,12 +1223,7 @@ result_class_tx  <- ddply(tx_test,
 
 # Make result class a factor
 result_class_tx$result_class <- factor(result_class_tx$result_class,
-    levels = c("Triple Positive", 
-               "Dual Pos, TST and QFT", "Dual Pos, QFT and TSPOT",
-               "Isolated QFT+",
-               "Dual Pos, TST and TSPOT", 
-               "Isolated TST+", "Isolated TSPOT+",
-               "Triple Negative", "Inconclusive"),
+    levels = result_class_order,
     ordered = TRUE)
 
 # Replace NaNs with -- for tidier display
