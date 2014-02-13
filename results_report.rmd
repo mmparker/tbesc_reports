@@ -55,13 +55,14 @@ enrolled <- with(to1clean$master,
 )
 
 
-# Set up subsets of just the participants enrolled this period
+# Set up subsets of only enrolled, eligible participants
 enrolled_master <- to1clean$master[to1clean$master$StudyID %in% enrolled, ]
 
 enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyID 
                                              %in% enrolled, ]
 
-
+enrolled_medhist <- to1clean$medicalhistory[to1clean$medicalhistory$StudyID
+                                            %in% enrolled, ]
 
 # Set a universal order for the result class variable
 result_class_order <- c("Triple Positive", 
@@ -77,7 +78,6 @@ result_class_order <- c("Triple Positive",
                         "TST-, QFT-, Borderline TSPOT",
                         "Triple Negative", 
                         "Inconclusive")
-
 
 
 
@@ -210,6 +210,29 @@ ggplot(enrolled_preenroll, aes(x = AgeAtEnrollment, y = ..count../sum(..count..)
 ```
 
 Median Age of Participants: `r median(enrolled_preenroll$AgeAtEnrollment, na.rm = TRUE)`
+
+
+## Self-Reported BCG Status
+
+
+```{r bcg_table}
+
+# Tidy it up just a bit
+enrolled_medhist$bcg <- enrolled_medhist$BcgVaccine
+enrolled_medhist$bcg[is.na(enrolled_medhist$bcg)] <- "Don't Know/Refused"
+
+# Aggregate
+bcg_table <- ddply(enrolled_medhist, .var = "bcg", .fun = summarise,
+                   freq = length(StudyID),
+                   perc = calc_percent(freq, nrow(enrolled_medhist), 2)
+)
+
+names(bcg_table) <- c("BCG Status", "Freq", "%")
+
+dfprint(arrange(bcg_table, desc(`BCG Status`)))
+
+
+```
 
 
 
