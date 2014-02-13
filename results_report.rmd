@@ -610,6 +610,18 @@ ggplot(ageres, aes(x = age.grp, weight = per, fill = notrippos)) +
 
 ```{r selected_results_by_age}
 
+
+# Set colors for this group of plots
+result_class_colors <- c("Triple Positive" = "#e41a1c",
+                        "Isolated QFT+" = "#984ea3",
+                        "Isolated TSPOT+" = "#ff7f00",
+                        "Isolated TST+" = "#377eb8",
+                        "Dual Pos, QFT and TSPOT" = "#4daf4a"
+)
+
+
+
+
 # Subset to just the triple-positives, TST-IGRA+, and TST+IGRA-
 # and re-aggregate
 testage$pos_result_group <- "Other"
@@ -656,7 +668,8 @@ ggplot(subset(ageres_pos, !is.na(pos_result_group)),
          shape = "Result",
          linetype = "Result") +
     scale_y_continuous(labels = percent) +
-    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+#    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+    scale_color_manual(values = result_class_colors) +
     scale_size_continuous(range = c(4, 10)) +
     theme_tbesc +
     guides(color = guide_legend(override.aes = list(size = 8, linetype = 0)))
@@ -664,6 +677,129 @@ ggplot(subset(ageres_pos, !is.na(pos_result_group)),
 
 
 ```
+
+
+
+### Isolated Positive Results
+
+```{r ageres_iso}
+
+
+# Plot the isolated-positive results in the same manner
+testage$isopos_result_group <- "Other"
+testage$isopos_result_group[testage$result_class %in% 
+                         "Isolated QFT+"] <- "Isolated QFT+"
+testage$isopos_result_group[testage$result_class %in% 
+                         "Isolated TSPOT+"] <- "Isolated TSPOT+"
+testage$isopos_result_group[testage$result_class %in% 
+                         "Isolated TST+"] <- "Isolated TST+"
+    
+testage$isopos_result_group <- factor(testage$result_class)
+
+levels(testage$isopos_result_group) <- c(NA, NA, NA, NA,
+                                         "Isolated QFT+",
+                                         "Isolated TSPOT+",
+                                         "Isolated TST+",
+                                         NA, NA, NA, NA, NA, NA)
+
+
+
+ageres_isopos <- ddply(testage, .var = "age.grp", .fun = function(x) {
+
+    # Aggregate results within the age group
+    rescount <- with(x, as.data.frame(table(isopos_result_group)))
+
+    # Calculate each result's percent of the age group
+    rescount$per <- rescount$Freq / nrow(x)
+
+    # Return
+    rescount
+
+})
+
+
+ggplot(subset(ageres_isopos, !is.na(isopos_result_group)),
+       aes(x = age.grp, y = per, color = isopos_result_group)) +
+    geom_point(aes(size = Freq, shape = isopos_result_group)) +
+    geom_line(aes(group = isopos_result_group),
+              size = 1.2) +
+    labs(x = "Age at Enrollment", 
+         y = "Percent with Result",
+         color = "Result",
+         size = "# of Participants",
+         shape = "Result",
+         linetype = "Result") +
+    scale_y_continuous(labels = percent) +
+#    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+    scale_color_manual(values = result_class_colors) +
+    scale_size_continuous(range = c(4, 10)) +
+    theme_tbesc +
+    guides(color = guide_legend(override.aes = list(size = 8, linetype = 0)))
+
+
+
+```
+
+
+
+
+
+### Isolated Positive Results
+
+```{r ageres_border}
+
+
+# Plot the borderline results in the same manner
+testage$border_result_group <- "Other"
+
+# Keep all result groups with a borderline TSPOT
+testage$border_result_group[grepl(x = testage$result_class,
+                                  pattern = "Borderline")] <- 
+    testage$result_class[grepl(x = testage$result_class,
+                               pattern = "Borderline")]
+    
+testage$border_result_group <- factor(testage$border_result_group)
+
+
+
+ageres_border <- ddply(testage, .var = "age.grp", .fun = function(x) {
+
+    # Aggregate results within the age group
+    rescount <- with(x, as.data.frame(table(border_result_group)))
+
+    # Calculate each result's percent of the age group
+    rescount$per <- rescount$Freq / nrow(x)
+
+    # Return
+    rescount
+
+})
+
+
+
+ggplot(subset(ageres_border, !border_result_group %in% "Other"),
+       aes(x = age.grp, y = per, color = border_result_group)) +
+    geom_point(aes(size = Freq, shape = border_result_group)) +
+    geom_line(aes(group = border_result_group), size = 1.2) +
+    labs(x = "Age at Enrollment", 
+         y = "Percent with Result",
+         color = "Result",
+         size = "# of Participants",
+         shape = "Result",
+         linetype = "Result") +
+    scale_y_continuous(labels = percent) +
+    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+    scale_size_continuous(range = c(5, 12)) +
+    scale_shape_manual(values = c(16, 17, 15, 18)) +
+    facet_wrap( ~ border_result_group, nrow = 2) +
+    theme_tbesc +
+    guides(color = guide_legend(override.aes = list(size = 8, linetype = 0)))
+
+
+```
+
+
+
 
 
 
