@@ -264,6 +264,34 @@ ggplot(birthco, aes(x = BirthCountry, weight = freq)) +
 ```
 
 
+### Region of Origin
+
+```{r region_of_origin}
+
+# Merge on region of origin
+region_dict <- read.csv("countries_to_regions.csv")
+
+birthregion <- merge(x = birthco,
+                     y = region_dict,
+                     by = "BirthCountry",
+                     all.x = TRUE)
+
+birthregion_summary <- ddply(subset(birthregion, !is.na(BirthRegion)), 
+                             .var = "BirthRegion", 
+                             .fun = summarise,
+                             
+    Freq = sum(freq),
+    Perc = calc_percent(Freq, sum(birthregion$freq), 2)
+)
+
+
+dfprint(
+    arrange(birthregion_summary, desc(Freq))
+)
+
+
+```
+
 
 ## Participants' Languages
 
