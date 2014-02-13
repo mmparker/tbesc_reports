@@ -580,6 +580,80 @@ ggplot(ageres, aes(x = age.grp, weight = per, fill = notrippos)) +
 ```
 
 
+### Selected Result Groups
+
+
+```{r selected_results_by_age}
+
+# Subset to just the triple-positives, TST-IGRA+, and TST+IGRA-
+# and re-aggregate
+testage$pos_result_group <- "Other"
+testage$pos_result_group[testage$result_class %in% 
+                         "Triple Positive"] <- "Triple Positive"
+testage$pos_result_group[testage$result_class %in% 
+                         "Dual Pos, QFT and TSPOT"] <- "Dual Pos, QFT and TSPOT"
+testage$pos_result_group[testage$result_class %in% 
+                         "Isolated TST+"] <- "Isolated TST+"
+    
+testage$pos_result_group <- factor(testage$result_class)
+levels(testage$pos_result_group) <- c("Dual Pos, QFT and TSPOT",
+                                      NA, NA, NA, NA, NA,
+                                      "Isolated TST+",
+                                      NA, 
+                                      "Triple Positive",
+                                      NA, NA, NA, NA)
+
+
+
+ageres_pos <- ddply(testage, .var = "age.grp", .fun = function(x) {
+
+    # Aggregate results within the age group
+    rescount <- with(x, as.data.frame(table(pos_result_group)))
+
+    # Calculate each result's percent of the age group
+    rescount$per <- rescount$Freq / nrow(x)
+
+    # Return
+    rescount
+
+})
+
+
+ggplot(subset(ageres_pos, !is.na(pos_result_group)),
+       aes(x = age.grp, y = per, color = pos_result_group)) +
+    geom_point(aes(size = Freq, shape = pos_result_group)) +
+    geom_line(aes(group = pos_result_group),
+              size = 1.2) +
+    labs(x = "Age at Enrollment", 
+         y = "Percent with Result",
+         color = "Result",
+         size = "# of Participants",
+         shape = "Result",
+         linetype = "Result") +
+    scale_y_continuous(labels = percent) +
+    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+    scale_size_continuous(range = c(4, 10)) +
+    theme_tbesc +
+    guides(color = guide_legend(override.aes = list(size = 8, linetype = 0)))
+
+
+
+```
+
+
+
+```{r nar_age_table}
+
+dfprint(count(testage, "age.grp"))
+
+
+```
+
+<br>
+
+<br>
+
+
 ```{r result_age_table}
 
 # Cast ageres into a more suitable table format
