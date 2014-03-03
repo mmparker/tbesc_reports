@@ -1,0 +1,1628 @@
+
+
+
+
+```{r initialize, echo=FALSE,results='hide',message=FALSE,warning=FALSE}
+# Initialize!
+
+# Stop R from interpreting strings as factors. 
+# When you want factors, you'll know it.
+options(stringsAsFactors = FALSE)
+
+# Load up the requisite packages
+library(knitr)     # It's a knitr document, after all...
+library(to1check)  # All TO1-related functions
+library(ggplot2)
+library(scales)
+library(gridExtra)
+library(RColorBrewer)
+library(plyr)      # For the count() and arrange() functions
+library(mpmisc)    # For printing data.frames nicely
+library(lubridate) # For calculating number of weeks remaining
+
+# Set default chunk options
+opts_chunk$set(echo = FALSE,
+               results = 'asis',
+               message = FALSE,
+               warning = FALSE,
+               error = TRUE,
+               fig.width = 10,
+               out.width = '800px',
+               dpi = 600)
+
+
+
+# Set up some colors to use throughout
+colorwheel <- c( "#F03B20", "#31A354", "#1F78B4")
+
+# Load the ggplot2 theme
+source(file.path("..", "css", "theme_tbesc.r"))
+
+
+# Load the local info (edit this if your results are wrong)
+local_facts <- read.csv("local_facts.csv")
+
+# Load the latest cleaned data
+load(local_facts$datapath)
+
+# Set aside those who were successfully enrolled - we'll generally disregard 
+# those who declined or who didn't complete enrollment 
+
+enrolled <- with(to1clean$master,
+    StudyID[!CloseReason %in% c("Didn't complete enrollment", 
+                                "Withdrew", 
+                                "Not eligible")]
+)
+
+
+# Set up subsets of only enrolled, eligible participants
+enrolled_master <- to1clean$master[to1clean$master$StudyID %in% enrolled, ]
+
+enrolled_preenroll <- to1clean$preenrollment[to1clean$preenrollment$StudyID 
+                                             %in% enrolled, ]
+
+enrolled_medhist <- to1clean$medicalhistory[to1clean$medicalhistory$StudyID
+                                            %in% enrolled, ]
+
+# Set a universal order for the result class variable
+result_class_order <- c("Triple Positive", 
+                        "TST+, QFT+, Borderline TSPOT",
+                        "Dual Pos, TST and QFT",
+                        "Dual Pos, TST and TSPOT",
+                        "TST+, QFT-, Borderline TSPOT",
+                        "Dual Pos, QFT and TSPOT", 
+                        "TST-, QFT+, Borderline TSPOT",
+                        "Isolated QFT+", 
+                        "Isolated TSPOT+", 
+                        "Isolated TST+",
+                        "TST-, QFT-, Borderline TSPOT",
+                        "Triple Negative", 
+                        "Inconclusive")
+
+
+
+# Cut ages into groups
+to1clean$preenrollment$age.grp <- NA
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 2 &
+                to1clean$preenrollment$AgeAtEnrollment <= 5] <- "2-5"
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 6 &
+                to1clean$preenrollment$AgeAtEnrollment <= 12] <- "6-12"
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 13 &
+                to1clean$preenrollment$AgeAtEnrollment <= 25] <- "13-25"
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 26 &
+                to1clean$preenrollment$AgeAtEnrollment <= 39] <- "26-39"
+to1clean$preenrollment$age.grp[to1clean$preenrollment$AgeAtEnrollment >= 40] <- "40+"
+
+# Make it an ordered factor - keeps plots, tables, etc. in sensible order
+to1clean$preenrollment$age.grp <- factor(to1clean$preenrollment$age.grp, 
+                          levels = c("2-5", "6-12", "13-25", 
+                                     "26-39", "40+"),
+                          ordered = TRUE
+)
+
+
+
+
+
+
+```
+
+<h1 class='maintitle'>TBESC TO 1 Results Summary: `r local_facts$site`</h1>
+<span class='maintitle'>Report generated at `r format(Sys.time())`</span>
+
+
+```{r}
+
+# Total enrolled so far (I need a better measure of this)
+total_enrolled <- length(enrolled)
+
+```
+
+Total Enrolled to Date: `r total_enrolled`
+
+
+
+
+
+## Eligibility Criteria
+```{r eligcrit}
+
+# Get eligibility criteria from the preenrollments
+elig.melt <- melt(enrolled_preenroll, 
+                  id.var = "StudyID", 
+                  measure.var = c("CloseContact", "ForeignBorn", "LtbiPrevalence",
+                                  "HighRisk", "HivPositive")
+)
+
+# Convert this weird numeric scheme to logical
+elig.melt$valuel <- !is.na(elig.melt$value)
+
+# Cast and summarize
+elig.wide <- ddply(elig.melt, .var = "variable", .fun = summarise, n = sum(valuel))
+
+
+# Add a row for "multiple" criteria
+ncrit <- ddply(elig.melt, .var = "StudyID", .fun = summarise, n = sum(valuel))
+
+multicrit <- data.frame(variable = "Multiple",
+                        n = nrow(ncrit[ncrit$n > 1, ]))
+                            
+crit.table <- rbind(elig.wide, multicrit)
+
+crit.table$percent <- round(crit.table$n / nrow(enrolled_preenroll), 4) * 100
+
+levels(crit.table$variable) <- c("Close Contact", "Foreign-born", "Local LTBI Prevalence > 25%",
+                                 "30+ Days in a High-Risk Country", "HIV+", "Multiple Criteria")
+
+names(crit.table) <- c("Criterion", "Number Enrolled", "Percent of Enrollees")
+
+
+
+
+```
+
+```{r eligcrit_display, result='asis'}
+
+dfprintif(crit.table)
+
+```
+
+
+
+
+## Gender
+```{r gender}
+
+# Summarize
+gender <- count(enrolled_preenroll, "Gender")
+
+gender$Gender[gender$Gender %in% 1] <- "Female"
+gender$Gender[gender$Gender %in% 2] <- "Male"
+
+# Add percentage
+gender$percent <- round(gender$freq / sum(gender$freq), 4) * 100
+
+# Pretty names
+names(gender) <- c("Gender", "Number Enrolled", "Percent of Enrollees")
+
+
+```
+
+
+```{r gender_display}
+
+dfprintif(gender)
+
+```
+
+
+
+## Participant Ages
+```{r ages, fig.width=10}
+
+ggplot(enrolled_preenroll, aes(x = AgeAtEnrollment, y = ..count../sum(..count..))) +
+    geom_bar(binwidth = 2) +
+    scale_y_continuous(labels = percent_format()) +
+    labs(x = "Age at Enrollment", y = "Percent of Enrollees") +
+    theme_tbesc
+
+
+```
+
+Median Age of Participants: `r median(enrolled_preenroll$AgeAtEnrollment, na.rm = TRUE)`
+
+
+## Self-Reported BCG Status
+
+
+```{r bcg_table}
+
+# Tidy it up just a bit
+enrolled_medhist$bcg <- enrolled_medhist$BcgVaccine
+enrolled_medhist$bcg[is.na(enrolled_medhist$bcg)] <- "Don't Know/Refused"
+
+# Aggregate
+bcg_table <- ddply(enrolled_medhist, .var = "bcg", .fun = summarise,
+                   freq = length(StudyID),
+                   perc = calc_percent(freq, nrow(enrolled_medhist), 2)
+)
+
+names(bcg_table) <- c("BCG Status", "Freq", "%")
+
+dfprint(arrange(bcg_table, desc(`BCG Status`)))
+
+
+```
+
+
+
+## Participants by Country of Origin
+```{r,results="hide",fig.width = 8, fig.height = 8}
+
+# Tally up participants by their country of birth
+birthco <- arrange(count(enrolled_master, var = "BirthCountry"), 
+                   freq, BirthCountry)
+
+# BirthCountry = "" or NA indicates a pre-enrolled person
+birthco$BirthCountry[birthco$BirthCountry %in% c("", NA)] <- "Pre-enrolled"
+
+# Make BirthCountry a factor - this ensures descending order of the bars
+birthco$BirthCountry <- factor(birthco$BirthCountry,  
+                               levels = birthco$BirthCountry)
+
+
+
+# Plot it
+ggplot(birthco, aes(x = BirthCountry, weight = freq)) +
+  geom_histogram() +
+  coord_flip() +
+  labs(title = "Enrollment by country of birth",
+       x = "Country of Birth",
+       y = "Number Enrolled") +
+  theme_tbesc
+
+```
+
+
+### Region of Origin
+
+```{r region_of_origin}
+
+# Merge on region of origin
+region_dict <- read.csv("countries_to_regions.csv")
+
+birthregion <- merge(x = birthco,
+                     y = region_dict,
+                     by = "BirthCountry",
+                     all.x = TRUE)
+
+birthregion_summary <- ddply(subset(birthregion, !is.na(BirthRegion)), 
+                             .var = "BirthRegion", 
+                             .fun = summarise,
+                             
+    Freq = sum(freq),
+    Perc = calc_percent(Freq, sum(birthregion$freq), 2)
+)
+
+
+dfprint(
+    arrange(birthregion_summary, desc(Freq))
+)
+
+
+```
+
+
+## Participants' Languages
+
+```{r partlang}
+
+# Convert all langauges to lower case for counting
+enrolled_master$interplang <- gsub(
+    x = tolower(enrolled_master$InterpreterLanguage),
+    pattern = "(^\\w)(.*$)",
+    replacement = "\\U\\1\\E\\2",
+    perl = TRUE)
+            
+
+# A blank means no interpreter was needed (right?)
+#count(to1clean$master, vars = c("InterpreterNeeded", "InterpreterLanguage"))
+
+# Recode blanks accordingly
+enrolled_master$interplang[enrolled_master$interplang %in% ""] <- "No Interpreter"
+
+
+
+# Aggregate
+lang <- arrange(count(enrolled_master, var = "interplang"), 
+                   freq, interplang)
+
+
+
+# Make interplang a factor - this ensures descending order of the bars
+lang$interplang <- factor(lang$interplang,  
+                          levels = lang$interplang)
+
+ggplot(lang, aes(x = interplang, weight = freq)) +
+    geom_histogram() +
+    coord_flip() +
+    labs(title = "Enrollment by language of interpretation",
+         x = "Language",
+         y = "Number Enrolled") +
+    theme_tbesc
+
+
+
+```
+
+
+
+## Semiannual Follow-Ups By Language
+
+```{r fu_lang}
+
+
+# Merge language onto the follow-ups
+fu_lang <- merge(x = subset(to1clean$followupfortb,
+                            subset = is.na(ParticipantLost),
+                            select = c("StudyID", "VisitDate")),
+                 y = enrolled_master[c("StudyID", "interplang")],
+                 by = "StudyID",
+                 all.x = TRUE)
+
+# Aggregate
+fu_lang_count <- arrange(count(fu_lang, "interplang"),
+                         freq, interplang)
+
+# Make interplang a factor - this ensures descending order of the bars
+fu_lang_count$interplang <- factor(fu_lang_count$interplang,  
+                                   levels = fu_lang_count$interplang)
+
+
+ggplot(fu_lang_count, aes(x = interplang, weight = freq)) +
+    geom_histogram() +
+    coord_flip() +
+    labs(title = "Follow-ups by language of interpretation",
+         x = "Language",
+         y = "Number of Follow-ups") +
+    theme_tbesc
+
+
+
+```
+
+
+
+## Test Results
+
+```{r,results='hide'}
+##################################
+# Summarize participants' individual test results
+testres <- compile_results(to1clean)
+
+testres_enrolled <- testres[testres$StudyID %in% enrolled, ]
+
+
+# Cast all results into a wide table - keep only the results of
+# participants enrolled in this period
+testwide <- dcast(
+                melt(testres_enrolled,
+                     id.var = "StudyID", 
+                     measure.var = c("tst", "qft", "tspot")),
+                variable ~ value,
+                fun.agg = length
+)
+
+# Tidy up for printing
+# Prettier test names
+testwide$variable <- toupper(as.character(testwide$variable))
+
+# Better column order
+testwide <- testwide[ , c("variable", "Negative", "Positive", 
+                          "Borderline", "Indeterminate")]
+
+
+# Pretty names
+names(testwide)[names(testwide) %in% "variable"] <- "Test"
+
+
+##################################
+# Individual test results - proportions
+testwide.prop <- dcast(
+                     melt(testres_enrolled,
+                          id.var = "StudyID", 
+                          measure.var = c("tst", "qft", "tspot")),
+                     variable ~ value,
+                     fun.agg = function(x) { length(x) / nrow(testres_enrolled) * 100}
+)
+
+# Tidy up for printing
+# Prettier test names
+testwide.prop$variable <- toupper(as.character(testwide.prop$variable))
+
+# Better column order
+testwide.prop <- testwide.prop[ , c("variable", "Negative", "Positive", 
+                                    "Borderline", "Indeterminate")]
+
+
+# Pretty names
+names(testwide.prop)[names(testwide.prop) %in% "variable"] <- "Test"
+
+
+
+##################################
+# Aggregate by result class
+testagg <- count(testres_enrolled, var = c("result_class"))
+
+# Make a factor of result_class by descending frequency for plotting later on
+testres_enrolled$plot_class <- factor(testres_enrolled$result_class,
+                                      levels = arrange(testagg, freq)$result_class)
+
+
+
+##################################
+# Make a factor of result_class for the table - this is more a logical ordering:
+# Triple-neg, triple-pos, isolated-pos, isolated-neg
+testagg$result_class <- factor(testagg$result_class,
+                               levels = c("Triple Negative",
+                                          "Triple Positive",
+                                          "Isolated TST+",
+                                          "Isolated QFT+", 
+                                          "Isolated TSPOT+",
+                                          "Dual Pos, QFT and TSPOT", 
+                                          "Dual Pos, TST and TSPOT", 
+                                          "Dual Pos, TST and QFT",
+                                          "TST-, QFT-, Borderline TSPOT",
+                                          "TST+, QFT-, Borderline TSPOT",
+                                          "TST-, QFT+, Borderline TSPOT",
+                                          "TST+, QFT+, Borderline TSPOT",
+                                          "Inconclusive")
+)
+
+```
+
+
+Count:
+
+```{r}
+
+# Number positive on each test
+dfprint(testwide)
+
+```
+
+Proportion:
+
+```{r}
+# Proportion positive on each test
+dfprint(testwide.prop)
+
+```
+
+
+
+
+```{r, results="hide",fig.width = 8, fig.height = 8}
+
+
+ggplot(testres_enrolled, aes(x = plot_class)) +
+  geom_bar() +
+  coord_flip() +
+  labs(x = "Number of Participants", y = "Result") +
+  theme_tbesc
+
+```
+
+
+```{r}
+
+# Add a proportion-of-enrolled indicator
+testagg$classprop <- round(testagg$freq / nrow(testres_enrolled) * 100, 2)
+
+# Pretty names
+names(testagg) <- c("Results", "Freq", "Proportion")
+
+
+dfprint(arrange(testagg, Results))
+
+```
+
+
+
+## Test Positivity by Age Group
+
+```{r posbyagegrp}
+
+
+# Add age and age group to the test results
+testage <- merge(x = testres_enrolled,
+                 y = to1clean$preenrollment[ , 
+                         c("StudyID", "AgeAtEnrollment", "age.grp")],
+                 all.x = TRUE)
+
+
+# Aggregate by age
+testage.agg <- ddply(testage, .var = "age.grp", .fun = summarise,
+
+    n = length(StudyID),
+    per.tstpos = sum(tst %in% "Positive") / n,
+    per.qftpos = sum(qft %in% "Positive") / n,
+    per.tspotpos = sum(tspot %in% "Positive") / n,
+    per.tspotbord = sum(tspot %in% "Borderline") / n
+                     
+)
+
+# Melt it for plotting
+testage.melt <- melt(testage.agg, id.vars = c("age.grp", "n"))
+
+# Pretty labels
+levels(testage.melt$variable) <- c("TST Positive", 
+                                   "QFT Positive",
+                                   "TSPOT Positive",
+                                   "TSPOT Borderline")
+
+
+ggplot(testage.melt, 
+       aes(x = age.grp, 
+           y = value,
+           color = variable,
+           group = variable)) +
+    geom_point(aes(size = n, shape = variable)) +
+    geom_line(aes(linetype = variable)) +
+    labs(x = "Age at Enrollment", y = "Percent with Result") +
+    scale_y_continuous(labels = percent) +
+    scale_size_continuous("# of Participants") +
+    scale_color_manual("Test", values = brewer.pal(n = 4, name = "Set1")) +
+    scale_linetype_discrete("Test") +
+    scale_shape_discrete("Test") +
+    theme_tbesc
+
+```
+
+
+
+## Test Results by Age Group
+
+
+
+```{r resultgroupsbyage}
+            
+# Aggregate results   
+ageres <- ddply(testage, .var = "age.grp", .fun = function(x) {
+    
+    # Aggregate results within the age group
+    rescount <- count(x, var = "result_class")
+    
+    # Calculate each result's percent of the age group
+    rescount$per <- round(rescount$freq / nrow(x) * 100, 1)
+    
+    # Return
+    rescount
+
+})
+
+
+# Make result_class an ordered factor
+ageres$result_class <- factor(ageres$result_class,
+                              levels = result_class_order)
+
+
+ggplot(ageres, aes(x = age.grp, weight = per, fill = result_class)) +
+    geom_bar(color = "black") +
+    labs(x = "Age at Enrollment", y = "Percent of Participants") +
+    coord_cartesian(y = c(-1, 60)) +
+    scale_y_continuous(breaks = seq(0, 100, 10)) +
+    scale_fill_manual("Result Group",
+                      values = c(rev(brewer.pal(n = 11, name = "Paired")), 
+                                 NA, NA)) +
+    theme_tbesc +
+    guides(fill = guide_legend(reverse = TRUE))
+
+
+
+
+```
+
+
+
+### How much is increasing positivity driven by the triple-positives?
+
+```{r notrippos}
+
+# But actually just reordering the factor and making them invisible
+ageres$notrippos <- factor(ageres$result_class,
+                           levels = result_class_order[c(2:7, 1, 8, 9)],
+                           ordered = TRUE)
+
+
+ggplot(ageres, aes(x = age.grp, weight = per, fill = notrippos)) +
+    geom_bar(color = "black") +
+    labs(x = "Age at Enrollment", y = "Percent of Participants") +
+    coord_cartesian(y = c(-1, 60)) +
+    scale_y_continuous(breaks = seq(0, 100, 10)) +
+    scale_fill_manual("Result Group",
+                      values = c(rev(brewer.pal(n = 11, 
+                                                 name = "Paired")[-7]), 
+                                 "honeydew", NA, NA)) +
+    theme_tbesc +
+    guides(fill = guide_legend(reverse = TRUE))
+
+
+
+
+```
+
+
+### Selected Result Groups
+
+
+```{r selected_results_by_age}
+
+
+# Set colors for this group of plots
+result_class_colors <- c("Triple Positive" = "#e41a1c",
+                        "Isolated QFT+" = "#984ea3",
+                        "Isolated TSPOT+" = "#ff7f00",
+                        "Isolated TST+" = "#377eb8",
+                        "Dual Pos, QFT and TSPOT" = "#4daf4a"
+)
+
+
+
+
+# Subset to just the triple-positives, TST-IGRA+, and TST+IGRA-
+# and re-aggregate
+testage$pos_result_group <- "Other"
+testage$pos_result_group[testage$result_class %in% 
+                         "Triple Positive"] <- "Triple Positive"
+testage$pos_result_group[testage$result_class %in% 
+                         "Dual Pos, QFT and TSPOT"] <- "Dual Pos, QFT and TSPOT"
+testage$pos_result_group[testage$result_class %in% 
+                         "Isolated TST+"] <- "Isolated TST+"
+    
+testage$pos_result_group <- factor(testage$result_class)
+levels(testage$pos_result_group) <- c("Dual Pos, QFT and TSPOT",
+                                      NA, NA, NA, NA, NA,
+                                      "Isolated TST+",
+                                      NA, 
+                                      "Triple Positive",
+                                      NA, NA, NA, NA)
+
+
+
+ageres_pos <- ddply(testage, .var = "age.grp", .fun = function(x) {
+
+    # Aggregate results within the age group
+    rescount <- with(x, as.data.frame(table(pos_result_group)))
+
+    # Calculate each result's percent of the age group
+    rescount$per <- rescount$Freq / nrow(x)
+
+    # Return
+    rescount
+
+})
+
+
+ggplot(subset(ageres_pos, !is.na(pos_result_group)),
+       aes(x = age.grp, y = per, color = pos_result_group)) +
+    geom_point(aes(size = Freq, shape = pos_result_group)) +
+    geom_line(aes(group = pos_result_group),
+              size = 1.2) +
+    labs(x = "Age at Enrollment", 
+         y = "Percent with Result",
+         color = "Result",
+         size = "# of Participants",
+         shape = "Result",
+         linetype = "Result") +
+    scale_y_continuous(labels = percent) +
+#    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+    scale_color_manual(values = result_class_colors) +
+    scale_size_continuous(range = c(4, 10)) +
+    theme_tbesc +
+    guides(color = guide_legend(override.aes = list(size = 8, linetype = 0)))
+
+
+
+```
+
+
+
+### Isolated Positive Results
+
+```{r ageres_iso}
+
+
+# Plot the isolated-positive results in the same manner
+testage$isopos_result_group <- "Other"
+testage$isopos_result_group[testage$result_class %in% 
+                         "Isolated QFT+"] <- "Isolated QFT+"
+testage$isopos_result_group[testage$result_class %in% 
+                         "Isolated TSPOT+"] <- "Isolated TSPOT+"
+testage$isopos_result_group[testage$result_class %in% 
+                         "Isolated TST+"] <- "Isolated TST+"
+    
+testage$isopos_result_group <- factor(testage$result_class)
+
+levels(testage$isopos_result_group) <- c(NA, NA, NA, NA,
+                                         "Isolated QFT+",
+                                         "Isolated TSPOT+",
+                                         "Isolated TST+",
+                                         NA, NA, NA, NA, NA, NA)
+
+
+
+ageres_isopos <- ddply(testage, .var = "age.grp", .fun = function(x) {
+
+    # Aggregate results within the age group
+    rescount <- with(x, as.data.frame(table(isopos_result_group)))
+
+    # Calculate each result's percent of the age group
+    rescount$per <- rescount$Freq / nrow(x)
+
+    # Return
+    rescount
+
+})
+
+
+ggplot(subset(ageres_isopos, !is.na(isopos_result_group)),
+       aes(x = age.grp, y = per, color = isopos_result_group)) +
+    geom_point(aes(size = Freq, shape = isopos_result_group)) +
+    geom_line(aes(group = isopos_result_group),
+              size = 1.2) +
+    labs(x = "Age at Enrollment", 
+         y = "Percent with Result",
+         color = "Result",
+         size = "# of Participants",
+         shape = "Result",
+         linetype = "Result") +
+    scale_y_continuous(labels = percent) +
+#    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+    scale_color_manual(values = result_class_colors) +
+    scale_size_continuous(range = c(4, 10)) +
+    theme_tbesc +
+    guides(color = guide_legend(override.aes = list(size = 8, linetype = 0)))
+
+
+
+```
+
+
+
+
+
+### Isolated Positive Results
+
+```{r ageres_border}
+
+
+# Plot the borderline results in the same manner
+testage$border_result_group <- "Other"
+
+# Keep all result groups with a borderline TSPOT
+testage$border_result_group[grepl(x = testage$result_class,
+                                  pattern = "Borderline")] <- 
+    testage$result_class[grepl(x = testage$result_class,
+                               pattern = "Borderline")]
+    
+testage$border_result_group <- factor(testage$border_result_group)
+
+
+
+ageres_border <- ddply(testage, .var = "age.grp", .fun = function(x) {
+
+    # Aggregate results within the age group
+    rescount <- with(x, as.data.frame(table(border_result_group)))
+
+    # Calculate each result's percent of the age group
+    rescount$per <- rescount$Freq / nrow(x)
+
+    # Return
+    rescount
+
+})
+
+
+
+ggplot(subset(ageres_border, !border_result_group %in% "Other"),
+       aes(x = age.grp, y = per, color = border_result_group)) +
+    geom_point(aes(size = Freq, shape = border_result_group)) +
+    geom_line(aes(group = border_result_group), size = 1.2) +
+    labs(x = "Age at Enrollment", 
+         y = "Percent with Result",
+         color = "Result",
+         size = "# of Participants",
+         shape = "Result",
+         linetype = "Result") +
+    scale_y_continuous(labels = percent) +
+    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+    scale_size_continuous(range = c(5, 12)) +
+    scale_shape_manual(values = c(16, 17, 15, 18)) +
+    facet_wrap( ~ border_result_group, nrow = 2) +
+    theme_tbesc +
+    guides(color = guide_legend(override.aes = list(size = 8, linetype = 0)))
+
+
+```
+
+
+
+
+
+
+```{r nar_age_table}
+
+dfprint(count(testage, "age.grp"))
+
+
+```
+
+<br>
+
+<br>
+
+
+```{r result_age_table}
+
+# Cast ageres into a more suitable table format
+ageres.melt <- melt(ageres,
+                    id.var = c("result_class", "age.grp"),
+                    measure.var = c("freq", "per"))
+
+ageres.wide <- dcast(ageres.melt,
+                     result_class ~ age.grp + variable,
+                     value.var = "value")
+
+# Convert N columns to integers
+ageres.wide$`2-5_freq` <- as.character(ageres.wide$`2-5_freq`)
+ageres.wide$`6-12_freq` <- as.character(ageres.wide$`6-12_freq`)
+ageres.wide$`13-25_freq` <- as.character(ageres.wide$`13-25_freq`)
+ageres.wide$`26-39_freq` <- as.character(ageres.wide$`26-39_freq`)
+ageres.wide$`40+_freq` <- as.character(ageres.wide$`40+_freq`)
+
+
+# Prettier names
+names(ageres.wide) <- c("Results",
+                        "Ages 2-5: N", "Ages 2-5: %",
+                        "Ages 6-12: N", "Ages 6-12: %",
+                        "Ages 13-25: N", "Ages 13-25: %",
+                        "Ages 26-39: N", "Ages 26-39: %",
+                        "Ages 40+: N", "Ages 40+: %")
+
+
+dfprintif(ageres.wide)
+
+```
+
+
+
+
+## Test Results by BCG Status
+
+```{r resultsbybcg}
+
+# Add BCG status to the results
+testbcg <- merge(x = testage,
+                 y = to1clean$medicalhistory[c("StudyID", "BcgVaccine")],
+                 by = "StudyID",
+                 all.x = TRUE)
+
+
+# Order BcgVaccine by making it a factor
+testbcg$BcgVaccine <-  factor(testbcg$BcgVaccine,
+                              levels = c("Yes", "No", "Don't Know/Refused"),
+                              ordered = TRUE)
+
+
+# Reorder result_class, too
+testbcg$result_class <- factor(testbcg$result_class,
+    levels = c("Triple Negative", 
+               "Isolated TST+",
+               "Dual Pos, TST and QFT",
+               "Dual Pos, TST and TSPOT",
+               "Isolated QFT+",
+               "Isolated TSPOT+",
+               "Dual Pos, QFT and TSPOT",
+               "Triple Positive",
+               "Inconclusive"),
+    ordered = TRUE
+)
+               
+
+
+ggplot(testbcg, aes(x = result_class)) +
+    geom_bar(aes(fill = BcgVaccine), position = "fill", color = "black") +
+    labs(x = "Result Class",
+         y = "Proportion of Participants in Result Class") +
+    scale_fill_manual("BCG Status", values = c("#1f78b4", "#fb9a99", "#a6cee3")) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 50, hjust = 1))
+
+
+
+```
+
+
+## Quantitative Test Results
+```{r quantres}
+
+
+# Set up a color scale for results
+resultcolors <- c("#F03B20", "#1F78B4", "#31A354", "grey", "grey", "grey")
+
+names(resultcolors) <- c("Negative", "Positive", 
+                         "Borderline",
+                         "Indeterminate", "Invalid", "Test Not Performed")
+
+
+# Set up result factors for nicer ordering
+to1clean$qft$result.ord <- factor(to1clean$qft$result,
+                                  levels = c("Negative", "Positive",
+                                             "Indeterminate"))
+
+
+to1clean$tspot$result.ord <- factor(to1clean$tspot$result,
+                                   levels = c("Negative", "Borderline",
+                                              "Positive", "Invalid",
+                                              "Test Not Performed"))
+
+
+ggplot(to1clean$skintest, aes(x = indur_mm)) +
+    geom_histogram(aes(fill = result), binwidth = 1) +
+    geom_vline(xintercept = 10, color = "red") +
+    labs(x = "TST Induration (mm)", 
+         y = "Frequency",
+         title = "TST Induration Sizes") +
+    scale_x_continuous(breaks = seq(0, 100, 5)) +
+    scale_fill_manual("Result", values = resultcolors) +
+    theme_bw()
+
+
+ggplot(to1clean$qft, aes(x = tbnil.num)) +
+    geom_histogram(aes(fill = result.ord), binwidth = 0.05) +
+    geom_vline(xintercept = 0.35, color = "red") +
+    labs(x = "TB - Nil (IU/mL)", 
+         y = "Frequency",
+         title = "Quantiferon TB - Nil Results") +
+    scale_x_continuous(breaks = c(seq(-10, 0, 1), 0.35, seq(1, 10, 1))) +
+    scale_fill_manual("Result", values = resultcolors) +
+    theme_bw()
+
+
+ggplot(to1clean$tspot, aes(x = tbnil.max)) +
+    geom_histogram(aes(fill = result.ord), binwidth = 1) +
+    geom_vline(xintercept = c(5, 8), color = "red") +
+    labs(x = "Maximum TB - Nil Result (spots)", 
+         y = "Frequency",
+         title = "TSPOT TB - Nil Results") +
+    scale_x_continuous(breaks = c(seq(-20, 5, 5), 8, seq(10, 100, 5))) +
+    scale_fill_manual("Result", values = resultcolors) +
+    theme_bw()
+
+
+```
+
+
+
+## TST Induration Size by BCG Status
+
+```{r tst_by_bcg, res = '300px'}
+
+# Add BCG status to TST results
+tst_bcg <- merge(x = to1clean$skintest,
+                 y = to1clean$medicalhistory[c("StudyID", "BcgVaccine")],
+                 all.x = TRUE,
+                 by = "StudyID")
+
+
+
+ggplot(tst_bcg, aes(x = BcgVaccine, y = indur_mm)) +
+    geom_violin(fill = alpha(colorwheel[3], 0.1), scale = "area") +
+    geom_boxplot(width = 0.1, fill = alpha(colorwheel[3], 0.5)) +
+    stat_summary(fun.y = "median", geom = "point") +
+    labs(x = "BCG Status",
+         y = "TST Induration (mm)") +
+    theme_bw()
+
+
+```
+
+
+
+## Quantitative Test Results By Age
+```{r quantres_age}
+
+
+
+# Set up defined shapes for the results
+resultshapes <- c(15, 3, 18, 13, 13, 13)
+
+names(resultshapes) <- c("Negative", "Positive", 
+                         "Borderline",
+                         "Indeterminate", "Invalid", "Test Not Performed")
+
+
+# Merge ages onto quantitative results
+tstage <- merge(x = to1clean$skintest,
+                y = to1clean$preenrollment[c("StudyID", 
+                                             "AgeAtEnrollment", 
+                                             "age.grp")],
+                by = "StudyID",
+                all.x = TRUE)
+
+qftage <- merge(x = to1clean$qft,
+                y = to1clean$preenrollment[c("StudyID",
+                                             "AgeAtEnrollment",
+                                             "age.grp")],
+                by = "StudyID",
+                all.x = TRUE)
+
+tspotage <- merge(x = to1clean$tspot,
+                  y = to1clean$preenrollment[c("StudyID",
+                                               "AgeAtEnrollment",
+                                               "age.grp")],
+                  by = "StudyID",
+                  all.x = TRUE)
+
+
+
+
+ggplot(tstage, aes(x = age.grp, y = indur_mm)) +
+    geom_boxplot(fill = colorwheel[2]) +
+    geom_hline(yintercept = 10, color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "Induration (mm)",
+         title = "TST Induration Sizes by Age Group") +
+    scale_color_manual("Result", values = resultcolors) +
+    scale_shape_manual("Result", values = resultshapes) +
+    theme_bw()
+
+
+ggplot(qftage, aes(x = age.grp, y = tbnil.num)) +
+    geom_boxplot(fill = colorwheel[2]) +
+    geom_hline(yintercept = 0.35, color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "TB - Nil Results (IU/mL)",
+         title = "Quantiferon TB - Nil Results by Age Group") +
+    scale_y_continuous(breaks = c(seq(-10, 0, 1), 0.35, seq(1, 10, 1))) +
+    scale_color_manual("Result", values = resultcolors) +
+    scale_shape_manual("Result", values = resultshapes) +
+    theme_bw()
+
+
+
+ggplot(tspotage, aes(x = age.grp, y = tbnil.max)) +
+    geom_boxplot(fill = colorwheel[2]) +
+    geom_hline(yintercept = c(5, 8), color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "Maximum TB - Nil Result (spots)",
+         title = "TSPOT TB - Nil Results by Age Group") +
+    scale_y_continuous(breaks = c(seq(-20, 5, 5), 8, seq(10, 100, 5))) +
+    scale_color_manual("Result", values = resultcolors) +
+    scale_shape_manual("Result", values = resultshapes) +
+    theme_bw()
+
+
+
+```
+
+
+
+```{r mitonilbyage}
+
+qftage.m <- melt(qftage,
+                 id.vars = c("StudyID", "age.grp"),
+                 measure.vars = c("nil.num", "mito.num"))
+
+tspotage.m <- melt(tspotage,
+                   id.vars = c("StudyID", "age.grp"),
+                   measure.vars = c("nil.num", "mito.num"))
+
+
+# Nicer labels
+levels(qftage.m$variable) <- c("Nil", "Mitogen")
+levels(tspotage.m$variable) <- c("Nil", "Mitogen")
+
+
+
+ggplot(qftage.m, aes(x = age.grp, y = value)) +
+    geom_boxplot(aes(fill = variable)) +
+    geom_hline(yintercept = 0.35, color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "Quantitative Result (IU/mL)",
+         title = "Quantiferon Nil and Mitogen Results by Age") +
+    scale_y_continuous(breaks = c(seq(-10, 0, 1), 0.35, seq(1, 10, 1))) +
+    scale_fill_manual("Result", values = unname(resultcolors)) +
+    theme_bw()
+
+
+
+ggplot(tspotage.m, aes(x = age.grp, y = value)) +
+    geom_jitter(aes(color = variable)) +
+    geom_hline(yintercept = c(5, 8), color = "red") +
+    labs(x = "Age At Enrollment", 
+         y = "Quantitative Result (spots)",
+         title = "TSPOT Nil and Mitogen Results by Age") +
+    scale_y_continuous(breaks = c(seq(-20, 5, 5), 8, seq(10, 100, 5))) +
+    scale_color_manual("Result", values = unname(resultcolors)) +
+    theme_bw()
+
+
+
+```
+
+
+
+```{r qftmodel, results='hide'}
+
+
+qftage.meltall <- melt(qftage,
+                       id.vars = c("StudyID", "AgeAtEnrollment"),
+                       measure.vars = c("nil.num", "tb.num", "mito.num"))
+
+
+# ggplot(qftage.meltall, aes(x = value, y = ..count..)) +
+#     geom_histogram(binwidth = 0.5)
+
+
+# With TB
+qftmod.var <- lm(value ~ variable, data = qftage.meltall)
+summary(qftmod.var)
+# qplot(resid(qftmod.var), binwidth = 0.50)
+
+qftmod.age <- lm(value ~ variable * AgeAtEnrollment, data = qftage.meltall)
+summary(qftmod.age)
+# qplot(resid(qftmod.age), binwidth = 0.50)
+
+AIC(qftmod.var)
+AIC(qftmod.age)
+
+
+
+# Without TB
+qftage.notb <- subset(qftage.meltall, variable %in% c("nil.num", "mito.num"))
+
+qftnotb.var <- lm(value ~ variable, data = qftage.notb)
+summary(qftnotb.var)
+# qplot(resid(qftnotb.var), binwidth = 0.50)
+
+qftnotb.age <- lm(value ~ variable * AgeAtEnrollment, data = qftage.notb)
+summary(qftnotb.age)
+# qplot(resid(qftnotb.age), binwidth = 0.50)
+
+AIC(qftnotb.var)
+AIC(qftnotb.age)
+
+```
+
+
+```{r tspotmodel, results='hide'}
+
+
+tspotage.meltall <- melt(tspotage,
+                       id.vars = c("StudyID", "AgeAtEnrollment"),
+                       measure.vars = c("nil.num", "mito.num",
+                                        "panel_a.num", "panel_b.num"))
+
+
+# ggplot(tspotage.meltall, aes(x = value, y = ..count..)) +
+#     geom_histogram(binwidth = 0.5)
+
+
+# Truncate values to 20
+#tspotage.meltall$value[tspotage.meltall$value > 20] <- 20
+
+# With TB
+tspotmod.var <- lm(value ~ variable, data = tspotage.meltall)
+summary(tspotmod.var)
+# qplot(resid(tspotmod.var), binwidth = 0.50)
+
+tspotmod.age <- lm(value ~ variable * AgeAtEnrollment, data = tspotage.meltall)
+summary(tspotmod.age)
+# qplot(resid(tspotmod.age), binwidth = 0.50)
+
+AIC(tspotmod.var)
+AIC(tspotmod.age)
+
+
+
+# Without TB
+tspotage.notb <- subset(tspotage.meltall, variable %in% c("nil.num", "mito.num"))
+
+tspotnotb.var <- lm(value ~ variable, data = tspotage.notb)
+summary(tspotnotb.var)
+# qplot(resid(tspotnotb.var), binwidth = 0.50)
+
+tspotnotb.age <- lm(value ~ variable * AgeAtEnrollment, data = tspotage.notb)
+summary(tspotnotb.age)
+# qplot(resid(tspotnotb.age), binwidth = 0.50)
+
+AIC(tspotnotb.var)
+AIC(tspotnotb.age)
+
+```
+
+
+## Test Results Over the Enrollment Period
+
+```{r tests_overtime}
+
+# Aggregate by enrollment month
+testres_enrolled$EnrollMonth <- format(testres_enrolled$EnrollDate, "%Y-%m")
+
+
+monthmelt <- melt(subset(testres_enrolled, EnrollDate >= as.Date("2012-11-01")),
+                  id.vars = "EnrollMonth",
+                  measure.vars = c("tst", "qft", "tspot"))
+
+
+# Aggregate
+monthcount <- ddply(monthmelt,
+                    .var = c("EnrollMonth", "variable"),
+                    .fun = summarise,
+                    
+    n = length(value),
+    per.pos = sum(value %in% "Positive") / n,
+    per.bord = sum(value %in% "Borderline") / n,
+    per.ind = sum(value %in% "Indeterminate") / n
+                    
+)
+    
+
+# Tidy up for plot
+levels(monthcount$variable) <- c("TST", "QFT", "TSPOT")
+
+
+ggplot(monthcount, aes(x = EnrollMonth, 
+                      y = per.pos,
+                      color = variable)) +
+    geom_point(aes(size = n)) +
+    geom_line(aes(group = variable, linetype = variable)) +
+    expand_limits(y = 0) +
+    scale_y_continuous(labels = percent) +
+    scale_color_manual("Test", 
+                       values = colorwheel[1:3]) +
+    scale_linetype_discrete("Test") +
+    scale_size_continuous("# Enrolled") +
+    labs(x = "Enrollment Month", y = "Percent Positive") +
+    theme_tbesc +
+    theme(axis.text.x = element_text(angle = 70, hjust = 1))
+    
+    
+
+
+
+
+```
+
+## Treatment Overview
+
+```{r tx_regimens}
+
+# Get the tx info from DMS - probably a way to refactor with the (older) code
+# in Treatment Outcomes By Test Result below
+# regimens <- subset(to1clean$ltbi,
+#                    subset = OfferTreatment,
+#                    select = c("StudyID", "OfferDate",
+#                               "OfferTreatment", "AcceptTreatment",
+#                               "plan", "TreatmentComplete")
+# )
+
+regimens <- subset(summarize_tx(to1clean), subset = OfferTreatment)
+
+
+n_offered <- sum(regimens$OfferTreatment, na.rm = TRUE)
+n_accepted <- sum(regimens$AcceptTreatment, na.rm = TRUE)
+per_accepted <- calc_percent(n_accepted, n_offered, digits = 0)
+
+
+```
+
+
+A total of `r n_offered` participants have been
+offered treatment; `r n_accepted` (`r per_accepted`%) accepted treatment.
+
+
+```{r regimen_table}
+
+
+
+
+# Aggregate the regimens
+regimen_table <- ddply(subset(regimens, AcceptTreatment), 
+                       .var = "plan", 
+                       .fun = summarise,
+                       
+    # Number and percent of participants started on this regimen
+    n_reg = length(StudyID),
+    per_reg = calc_percent(n_reg, n_accepted, digits = 1),
+                       
+    # Number of participants eligible to complete - count all who have had
+    # enough_time, as well as any who have already completed
+    n_eligible = sum(TreatmentComplete | enough_time, na.rm = TRUE),
+                       
+    # Number and percent of the eligible who have completed
+    n_completed = sum(TreatmentComplete, na.rm = TRUE),
+    per_completed = calc_percent(n_completed,
+                                 n_eligible,
+                                 digits = 1)
+                       
+)
+
+# Nicer names
+names(regimen_table) <- c("Regimen", 
+                          "N Started", "% of Starts", 
+                          "N Eligible to Complete",
+                          "N Completed", "% Completed")
+
+
+dfprintif(arrange(regimen_table, desc(`N Started`)))
+
+
+```
+
+Note: Completion rates are calculated using participants who have had sufficient
+time to complete following CDC guidelines (52 weeks for Daily INH,
+26 weeks for Daily RIF, and
+16 weeks for Weekly INH/Rifapentine).
+
+Participants who have completed treatment are 
+included regardless of time on regimen.
+
+
+
+
+## Regimen Starts Over Time
+
+```{r reg_over_time}
+
+# Aggregate by... quarter?
+regimens$offer_qtr <- paste0(
+    format(regimens$OfferDate, "%Y"),
+    " Q",
+    (as.numeric(format(regimens$OfferDate, "%m")) + 2) %/% 3)
+
+
+# Convert plan to a factor so that plans get at least a zero-count in all quarters
+regimens$plan.f <- factor(regimens$plan)
+
+reg_over_time <- ddply(regimens, .var = "offer_qtr", .fun = function(x) {
+    
+    # Aggregate by plan
+    plan_count <- with(x, as.data.frame(table(plan.f)))
+    
+    plan_count$prop <- plan_count$Freq / sum(plan_count$Freq)
+    
+    plan_count
+    
+})
+
+
+    
+ggplot(reg_over_time, aes(x = offer_qtr, y = prop, color = plan.f)) +
+    geom_point(aes(size = Freq)) +
+    geom_line(aes(group = plan.f), size = 1.2) +
+    labs(x = "Quarter Offered",
+         y = "Percent of Participants Who Initiated Treatment") +
+    scale_color_brewer("Tx Regimen", palette = "Paired") +
+    scale_y_continuous(labels = percent) +
+    scale_size_continuous("Number Starting Tx", range = c(3, 10)) +
+    theme_bw() + theme(legend.key.width = unit(1, "in"))
+
+
+
+
+```
+
+
+## Treatment Outcomes By Test Result
+
+
+```{r tx_outcomes}
+
+
+# Merge treatment info onto test results
+tx_test <- merge(x = testres_enrolled,
+                 y = regimens,
+                 by = "StudyID",
+                 all.x = TRUE)
+
+
+# Summarize by single test results
+tx_test_melt <- melt(tx_test,
+                     id.var = c("StudyID", "OfferTreatment",
+                                "AcceptTreatment", "enough_time",
+                                "TreatmentComplete"),
+                     measure.var = c("tst", "qft", "tspot")
+)
+
+result_tx  <- ddply(tx_test_melt, 
+                    .var = c("variable", "value"), 
+                    .fun = summarise,
+                    
+    # Number of participants positive by this test
+    n = length(StudyID),
+                    
+    # Number and % of test-pos participants offered treatment
+    n_offered = sum(OfferTreatment, na.rm = TRUE),
+    per_offered = round(n_offered / n * 100, 2),
+                    
+    # Number and % of test-pos participants who were
+    # offered treatment and accepted
+    n_accepted = sum(AcceptTreatment, na.rm = TRUE),
+    per_accepted = round(n_accepted / n_offered * 100, 2),
+                    
+    # Number of participants eligible to complete - count all who have had
+    # enough_time, as well as any who have already completed
+    n_eligible = sum(TreatmentComplete | enough_time, na.rm = TRUE),
+
+    # Number and percent of the eligible who have completed
+    n_completed = sum(TreatmentComplete, na.rm = TRUE),
+    per_completed = calc_percent(n_completed,
+                                 n_eligible,
+                                 digits = 1)
+                    
+)
+
+
+# Subset to just positive tests
+pos_tx <- subset(result_tx, value %in% "Positive")
+
+# Relabel variable
+pos_tx$variable <- c("TST+", "QFT+", "TSPOT+")
+
+
+
+
+# Summarize by result class                 
+result_class_tx  <- ddply(tx_test, 
+                    .var = "result_class", 
+                    .fun = summarise,
+                    
+    # Number of participants with this result class
+    n = length(StudyID),
+
+    # Number and % of this class who were offered treatment
+    n_offered = sum(OfferTreatment, na.rm = TRUE),
+    per_offered = round(n_offered / n * 100, 2),
+
+    # Number and % of this class who were offered treatment and accepted
+    n_accepted = sum(AcceptTreatment, na.rm = TRUE),
+    per_accepted = round(n_accepted / n_offered * 100, 2),
+
+    # Number of participants eligible to complete - count all who have had
+    # enough_time, as well as any who have already completed
+    n_eligible = sum(TreatmentComplete | enough_time, na.rm = TRUE),
+
+    # Number and percent of the eligible who have completed
+    n_completed = sum(TreatmentComplete, na.rm = TRUE),
+    per_completed = calc_percent(n_completed,
+                                 n_eligible,
+                                 digits = 1)
+
+)
+
+
+# Make result class a factor
+result_class_tx$result_class <- factor(result_class_tx$result_class,
+    levels = result_class_order,
+    ordered = TRUE)
+
+# Replace NaNs with -- for tidier display
+result_class_tx$per_accepted[is.nan(result_class_tx$per_accepted)] <- "--"
+result_class_tx$per_completed[is.nan(result_class_tx$per_completed)] <- 
+    "--"
+
+
+# Replace n_accept with zero when no one was offered,
+# and n_complete with zero when no one accepted
+result_class_tx$n_accepted[result_class_tx$n_offered %in% 0] <- "--"
+result_class_tx$n_completed[result_class_tx$n_accepted %in% 0] <- "--"
+
+
+
+```
+
+```{r print_pos_tx}
+
+
+# Prettier names
+names(pos_tx) <- c("Result", "drop", 
+                   "N", 
+                   "N Offered", "% Offered",
+                   "N Accepted", "% Accepted",
+                   "N Eligible to Complete",
+                   "N Completed", "% Completed")
+
+
+dfprintif(pos_tx[ , names(pos_tx)[!names(pos_tx) %in% "drop"]])
+
+
+
+```
+
+Note: Completion rates are calculated using participants who have had sufficient
+time to complete following CDC guidelines (52 weeks for Daily INH,
+26 weeks for Daily RIF, and
+16 weeks for Weekly INH/Rifapentine).
+
+Participants who have completed treatment are 
+included regardless of time on regimen.
+
+
+
+
+## Treatment Outcomes By Result Group
+
+
+```{r print_class_tx}
+
+
+# Prettier names
+names(result_class_tx) <- c("Result Class", "N", 
+                            "N Offered", "% Offered",
+                            "N Accepted", "% Accepted",
+                            "N Eligible to Complete",
+                            "N Completed", "% Completed")
+
+
+dfprintif(arrange(result_class_tx, `Result Class`))
+
+
+
+```
+
+Note: Completion rates are calculated using participants who have had sufficient
+time to complete following CDC guidelines (52 weeks for Daily INH,
+26 weeks for Daily RIF, and
+16 weeks for Weekly INH/Rifapentine).
+
+Participants who have completed treatment are 
+included regardless of time on regimen.
+
+
+
+
+### Semiannual Follow-up Results
+
+```{r semiannual_fu}
+
+# Calculate the number of participants eligible for follow-ups
+fu_eligible <- subset(to1clean$master, 
+                      subset = ParticipantStatus %in% c("LTBI Test +",
+                                                        "LTBI Treatment",
+                                                        "LTBI Not Treated"),
+                      select = c("StudyID", "EnrollDate", 
+                                 "BirthCountry", "InterpreterLanguage")
+)
+
+# How have at least one semiannual follow-up record?
+fu_eligible$recorded <- fu_eligible$StudyID %in% to1clean$followupfortb$StudyID
+
+# How many are lost to follow-up?
+fu_eligible$lost <- fu_eligible$StudyID %in%
+    to1clean$followupfortb$StudyID[!is.na(to1clean$followupfortb$ParticipantLost)]
+
+
+# Aggregate
+fu_stats <- summarise(fu_eligible,
+                      n_eligible = length(StudyID),
+                      n_recorded = sum(recorded),
+                      n_lost = sum(lost),
+                      per_lost = calc_percent(n_lost, n_recorded, digits = 1)
+)
+
+
+# Rename for printing
+names(fu_stats) <- c("N Eligible for FU",
+                     "N with 1+ Recorded FU",
+                     "N Lost",
+                     "% Lost")
+
+dfprintif(fu_stats)
+
+
+```
+
+
+
+### Test Results by Country of Origin
+
+
+
+
+### Test Results by Risk Factors
+
+
+
+
+
+
+
+
+### TB Disease
+
+
+
+
