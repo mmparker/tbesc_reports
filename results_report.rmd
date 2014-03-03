@@ -26,9 +26,7 @@ opts_chunk$set(echo = FALSE,
                message = FALSE,
                warning = FALSE,
                error = TRUE,
-               fig.width = 10,
-               out.width = '800px',
-               dpi = 600)
+               fig.width = 10)
 
 
 
@@ -40,7 +38,7 @@ source(file.path("..", "css", "theme_tbesc.r"))
 
 
 # Load the local info (edit this if your results are wrong)
-local_facts <- read.csv("local_facts.csv")
+local_facts <- read.csv(file.path("..", "local_facts.csv"))
 
 # Load the latest cleaned data
 load(local_facts$datapath)
