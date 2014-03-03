@@ -1,7 +1,7 @@
 Rscript "clean_script.r"
 
-pushd "..\auto_qa"
+pushd "..\to1report"
 Rscript "generate_report.r"
 
-pushd "..\results"
+pushd "..\to1results"
 Rscript "generate_report.r"
