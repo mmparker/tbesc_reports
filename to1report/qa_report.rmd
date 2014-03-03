@@ -1,0 +1,571 @@
+
+
+```{r initialize, echo=FALSE,results='hide',message=FALSE,warning=FALSE}
+# Initialize!
+
+# Stop R from interpreting strings as factors. 
+# When you want factors, you'll know it.
+options(stringsAsFactors = FALSE)
+
+# Load up the requisite packages
+library(knitr)     # It's a knitr document, after all...
+library(to1check)  # All TO1-related functions
+library(plyr)      # For the count() and arrange() functions
+library(mpmisc)    # For printing data.frames nicely
+library(lubridate) # For calculating number of weeks remaining
+library(tbdiag)    # For checking QFT and TSPOT results
+
+# Set default chunk options
+opts_chunk$set(echo = FALSE,
+               results = 'asis',
+               message = FALSE,
+               warning = FALSE,
+               error = TRUE)
+
+
+# Load the ggplot2 theme
+source(file.path("..", "css", "theme_tbesc.r"))
+source(file.path("..", "css", "angled_x.r"))
+
+
+# Load the local info (edit this if your results are wrong)
+local_facts <- read.csv("local_facts.csv")
+
+# Load the latest cleaned data
+load(local_facts$datapath)
+
+# Set aside those who were successfully enrolled during the 
+# in question - we'll generally disregard those who declined 
+# or who didn't complete enrollment 
+
+enrolled <- with(to1clean$master,
+    StudyID[!CloseReason %in% c("Didn't complete enrollment", 
+                                "Withdrew", 
+                                "Not eligible") &
+            EnrollDate >= as.Date(local_facts$period_start) &
+            EnrollDate <= as.Date(local_facts$period_end)]
+)
+
+# For checks that should include participants form all times
+enrolled_ever <- with(to1clean$master,
+    StudyID[!CloseReason %in% c("Didn't complete enrollment", 
+                                "Withdrew", 
+                                "Not eligible")]
+)
+
+
+# Set up subsets of just the participants enrolled this period
+enrolled_master <- to1clean$master[to1clean$master$StudyID %in% enrolled, ]
+
+
+
+```
+
+<h1 class='maintitle'>TBESC TO 1 Status Report: `r local_facts$site`</h1>
+<h3 class='maintitle'>Enrollment Period: `r paste(local_facts$period_start, "through", local_facts$period_end)`</h3>
+<span class='maintitle'>Report generated at `r format(Sys.time())`</span>
+
+## Enrollment Progress
+---------------------
+```{r}
+
+# Total enrolled so far (I need a better measure of this)
+total_enrolled <- length(enrolled)
+
+# Total remaining to meet local target
+total_remain <- local_facts$enroll_target - total_enrolled
+
+# Weeks remaining in the enrollment period
+weeks_left <- new_interval(Sys.Date(), local_facts$period_end) / 
+              duration(num = 1, units = "weeks")
+
+# Average weekly enrollment to make target
+weekly_target <- round(total_remain / weeks_left, 1)
+
+
+```
+
+Total Enrolled to Date: `r total_enrolled`
+
+Enrollment Remaining: `r total_remain`
+
+Weeks Remaining (approximately): `r round(weeks_left, 1)`
+
+Average Weekly Enrollment Required: `r weekly_target`
+
+
+
+```{r,results="hide",fig.width = 12, fig.height = 6}
+# Plot enrollment progress to date
+enrolled_dates <- enrolled_master$EnrollDate
+
+enroll_progress_plot(enrolled_dates,
+                     target = local_facts$enroll_target,
+                     enroll_start = as.Date(local_facts$period_start),
+                     enroll_end = as.Date(local_facts$period_end)) + 
+    theme_tbesc +
+    angled_x
+
+```
+
+```{r weekly_enroll}
+
+# Show enrollment from the last x weeks
+
+# Convert enrollment dates to weeks
+enrolled_weeks <- data.frame(enroll_date = enrolled_dates,
+                             enroll_week = format(enrolled_dates, "%Y-%W"))
+
+# Aggregate
+weekly_enrolled <- ddply(enrolled_weeks, .var = "enroll_week", .fun = summarise,
+    `Week` = min(enroll_date, na.rm = TRUE),
+    `Number Enrolled` = length(enroll_date)
+)
+
+cat("Enrollment Totals for Last Eight Weeks \n")
+dfprintif(tail(weekly_enrolled[ , c("Week", "Number Enrolled")], 8))
+
+
+
+# Estimated end of enrollment
+# Calculate average enrollment over the last eight weeks
+ave_enroll <- mean(tail(weekly_enrolled$"Number Enrolled", 8))
+
+# Crude estimate of the end of enrollment
+estimated_end <- format(Sys.Date() + total_remain / ave_enroll *7, 
+                        format = "%B %d, %Y"
+)
+
+cat("Estimated Completion of Enrollment: ", estimated_end)
+
+
+
+```
+
+
+
+
+
+## Participants with Action Needed
+-----------------------------------
+
+### Participants Eligible for Follow-Up
+```{r}
+fu_report <- calc_fu(to1clean)
+
+names(fu_report) <- c("StudyID", "Enroll Date", 
+                      "FU Starts", "FU Ends", "Eligible for FU",
+                      "FU Cycle", "Days Left", "Completed")
+
+
+dfprintif(fu_report,
+          norowmsg = "No participants require follow-up at this time.")
+
+```
+
+
+
+### Triple-Negative Participants to Close
+```{r to_close}
+# Identify triple neg participants to close (and sort by visit date)
+tripnegtoclose <- arrange(to_close(to1clean), EnrollDate)
+
+# Flag contacts - they won't necessarily be closed right away, 
+# pending 8-week results
+tripnegtoclose$contact <- tripnegtoclose$StudyID %in% 
+    to1clean$preenrollment$StudyID[to1clean$preenrollment$CloseContact %in% 1]
+
+# Pretty names
+names(tripnegtoclose) <- c("StudyID", "Status", "Visit Date", 
+                           "TST Neg?", "QFT Neg?",
+                           "TSPOT Neg?", "Triple Neg?",
+                           "Contact?")
+
+dfprintif(tripnegtoclose,
+          norowmsg = "No open triple-negative participants at this time.")
+
+```
+
+
+
+### Participants Closed Incorrectly
+```{r closed_wrongly}
+# Identify triple neg participants to close (and sort by visit date)
+closedwrongly <- arrange(closed_check(to1clean), problem, EnrollDate)
+
+# Pretty names
+names(closedwrongly) <- c("StudyID", "Visit Date", "Reason Closed", "Problem")
+
+dfprintif(arrange(closedwrongly, `Visit Date`),
+         norowmsg = "There are no incorrectly-closed participants at this time.")
+
+
+```
+
+
+
+
+## Data Quality Checks
+------------------------
+
+
+### QFT Results to Double-Check
+```{r qftcheck}
+
+# Calculate QFT results using tbdiag
+qfts <- subset(to1clean$qft,
+               select = c("StudyID", "dt_placed", 
+                          "nil", "tb", "mito", "result",
+                          "nil.num", "tb.num", "mito.num",
+                          "rerun_nil", "rerun_tb", "rerun_mito", "rerun_result",
+                          "rerun_nil.num", "rerun_tb.num", "rerun_mito.num")
+)
+               
+qfts$result_check <- with(qfts, 
+                          qft.interp(nil = nil.num, 
+                                     tb = tb.num, 
+                                     mito = mito.num,
+                                     verbosity = "terse")
+)
+
+
+# Identify any discordant results
+qfts_discord <- subset(qfts,
+                       subset = result != result_check,
+                       select = c("StudyID", "dt_placed", 
+                                  "nil", "tb", "mito", 
+                                  "result", "result_check")
+)
+
+
+# Pretty names
+names(qfts_discord) <- c("StudyID", "Date Placed", 
+                         "Nil", "TB Antigen", "Mitogen",
+                         "DMS Result", "Calculated Result")
+
+
+# Print
+dfprintif(qfts_discord,
+          norowmsg = "All recorded QFT results appear to be correct.")
+
+
+```
+
+### TSPOT Results to Double-Check
+```{r tspotcheck}
+
+# Calculate tspot results using tbdiag - exclude any "Test Not Performed" TSPOTs.
+tspots <- subset(to1clean$tspot,
+                 subset = !result %in% "Test Not Performed",
+                 select = c("StudyID", "dt_placed", 
+                            "nil", "panel_a", "panel_b", "mito", "result",
+                            "nil.num", "panel_a.num", "panel_b.num", "mito.num")
+)
+               
+tspots$result_check <- with(tspots, 
+                          tspot.interp(nil = nil.num, 
+                                       panel.a = panel_a.num, 
+                                       panel.b = panel_b.num,
+                                       mito = mito.num,
+                                       verbosity = "terse")
+)
+
+
+# Identify any discordant results
+tspots_discord <- subset(tspots,
+                       subset = result != result_check,
+                       select = c("StudyID", "dt_placed", 
+                                  "nil", "panel_a", "panel_b", "mito", 
+                                  "result", "result_check")
+)
+
+
+# Pretty names
+names(tspots_discord) <- c("StudyID", "Date Placed", 
+                         "Nil", "Panel A", "Panel B", "Mitogen",
+                         "DMS Result", "Calculated Result")
+
+
+# Print
+dfprintif(tspots_discord,
+          norowmsg = "All recorded TSPOT results appear to be correct.")
+
+```
+
+
+
+### Participants with Follow-ups Outside of the 45 Day Window
+```{r}
+
+oobfu <- check_fu(to1clean)
+
+# Pretty names
+names(oobfu) <- c("StudyID", "Enrollment Date", "FU Cycle", "FU Date",
+                  "Eligibility Started", "Eligibility Ended")
+
+dfprintif(arrange(oobfu, `FU Date`),
+          norowmsg = "All follow-ups were completed on eligible dates.")
+
+
+```
+
+
+
+### Participants with TSTs Read Outside of the 44-76 Hour Window
+```{r}
+winprob <- tst_win_check(to1clean)
+
+winprob_enrolled <- winprob[winprob$StudyID %in% enrolled, ]
+
+# Pretty names
+names(winprob_enrolled) <- c("StudyID",
+                             "Date/Time Placed", "Placed By",
+                             "Date/Time Read", "Read By",
+                             "Hours Between")
+
+
+dfprintif(winprob_enrolled,
+          norowmsg = "All TSTs read within the protocol window.")
+
+```
+
+
+
+### Participants with Missing TST, QFT, or TSPOT Results
+```{r}
+# Identify participants with a missing test
+testres <- compile_results(to1clean)
+
+# Exclude those who didn't complete enrollment activities
+missingtest <- subset(arrange(testres, EnrollDate),
+                      subset = (is.na(tst) | 
+                                is.na(qft) | 
+                                tspot %in% c(NA, "Test Not Performed")) & 
+                                StudyID %in% enrolled_ever,
+                      select = c("StudyID", "EnrollDate", "tst", "qft", "tspot"))
+
+# Pretty names
+names(missingtest) <- c("StudyID", "Visit Date", 
+                        "TST Result", "QFT Result", "TSPOT Result")
+
+
+dfprintif(missingtest,
+          norowmsg = "All participants have complete test results at this time.")
+
+```
+
+
+
+### Participants with Pre-enrollment vs. Calculated Age Discrepancies
+Age is calculated from participant's reported date of birth and their visit date.
+```{r}
+ageprob <- age_check(to1clean)
+
+ageprob_enrolled <- ageprob[ageprob$StudyID %in% enrolled, ]
+
+# Pretty names
+names(ageprob_enrolled)[names(ageprob_enrolled) %in% "preenroll_age"] <- "Pre-enroll Age"
+names(ageprob_enrolled)[names(ageprob_enrolled) %in% "calc_age"] <- "Calculated Age"
+names(ageprob_enrolled)[names(ageprob_enrolled) %in% "age_diff"] <- "Difference"
+
+
+dfprintif(ageprob_enrolled,
+          norowmsg = paste("\n","All pre-enrollment and calculated ages match."))
+
+```
+
+
+
+### Height and Weight
+```{r,fig.width=8}
+htwts <- htwt_check(to1clean)
+
+# Show the plot (and cancel out theme_tbesc's angled axis text)
+htwts$plot + theme_tbesc
+```
+
+
+
+#### Participants with most-outlying heights/weights in this enrollment period:
+```{r}
+# Subset to this enrollment period
+htwtoutliers_enrolled <- htwts$outlierdf[htwts$outlierdf$StudyID %in% enrolled, ]
+
+# Slightly nicer names
+names(htwtoutliers_enrolled) <- c("StudyID", "Height (inches)", "Weight (pounds)")
+
+dfprintif(htwtoutliers_enrolled,
+          norowmsg = "No outliers are present in this period's enrollment.")
+```
+
+
+
+#### Participants missing height and/or weight in this enrollment period:
+```{r}
+# Subset to this enrollment period
+htwtmissing_enrolled <- htwts$missingdf[htwts$missingdf$StudyID %in% enrolled, ]
+
+# Slightly nicer names
+names(htwtmissing_enrolled) <- c("StudyID", "Height (inches)", "Weight (pounds)")
+
+dfprintif(htwtmissing_enrolled,
+          norowmsg = "All participants have height and weight recorded.")
+
+```
+
+
+
+### TSTs with Rare PPD Lot Numbers
+```{r}
+lotfreq <- count(to1clean$skintest, "PpdLotNumber")
+
+n.rare <- 5
+
+rare_tst_lot <- subset(to1clean$skintest,
+                       subset = PpdLotNumber %in% 
+                                lotfreq$PpdLotNumber[lotfreq$freq < n.rare],
+                       select = c("StudyID", "dt_placed", "TstPlacedBy", "PpdLotNumber"))
+
+# Pretty names
+names(rare_tst_lot) <- c("StudyID", "Date Placed", "Placed By", "PPD Lot #")
+
+
+dfprintif(arrange(rare_tst_lot, `PPD Lot #`),
+          norowmsg = paste("All participants' TST lots have", 
+                           n.rare, 
+                           "or more placements recorded.")
+)
+
+```
+
+
+
+
+### QFTs with Rare Lot Numbers
+```{r}
+
+# Melt the lots into a single database
+lot.melt <- melt(to1clean$qft,
+                 id.var = "StudyID",
+                 measure.var = c("QftLotNumNil", "QftLotNumTba",
+                                 "QftLotNumMit", "QftAssayLotNum")
+)
+
+# Pretty names
+levels(lot.melt$variable) <- c("Nil", "TB", "Mitogen", "Assay")
+
+# Subset to the rare lots
+qftlotfreq <- subset(count(lot.melt, c("variable", "value")),
+                     freq < n.rare)
+
+qftlotfreq$flag <- TRUE
+
+lot.probs <- merge(x = lot.melt,
+                   y = qftlotfreq[ , c("variable", "value")],
+                   by = c("variable", "value")
+)
+
+
+
+# Pretty names
+names(lot.probs) <- c("Tube", "Lot Number", "Study ID")
+
+
+dfprintif(lot.probs[ , c("Study ID", "Tube", "Lot Number")],
+          norowmsg = paste("All participants' QFT lots have", 
+                           n.rare, 
+                           "or more uses recorded.")
+)
+
+
+```
+
+
+### Contacts Without Source's State Case Number or GenType
+
+```{r contacts_missing_info}
+
+
+# Identify participants who are contacts but still pending either a state case number
+# or a GenType number
+
+contacts_miss <- subset(to1clean$master,
+                        subset = StateCaseNumberIdk %in% 98 |
+                                 GenTypeIdk %in% 98,
+                        select = c("StudyID", "EnrollDate", "StateCaseNumber", "GenType")
+)
+
+
+
+
+dfprintif(arrange(contacts_miss, EnrollDate, StudyID),
+          norowmsg = "All contacts appear to have complete source case information.")
+
+
+```
+
+
+
+
+
+### Participants with Misspelled Languages
+
+```{r langprob}
+
+# Set up a vector of acceptable language names
+langs <- c("Arabic", "Burmese", "Vietnamese", 
+           "French", "Haitian", "Chinese",
+           "Nepali", "Somali", "Spanish", 
+           "Tagalog", "Akan", "Amharic",
+           "Portuguese", "Chin", "Chuukese",
+           "Dari", "Farsi", "Fulani", "Greek",
+           "Hindi", "Hmong", "Ilocano",
+           "Indonesian", "Jarai", "Karen",
+           "Khmer", "Kirundi", "Korean",
+           "Serbian", "Kurdish", "Lao",
+           "Malayalam", "Marshallese", 
+           "Oromo", "Oromic",
+           "Polish", "Punjabi", "Romanian",
+           "Russian", "Swahili", "Tamil",
+           "Thai", "Tigrinya", "Urdu",
+           "")
+
+# Check the enrolled names for validity
+langprob <- subset(to1clean$master,
+                   subset = !tolower(InterpreterLanguage) %in% tolower(langs),
+                   select = c("StudyID", "InterpreterLanguage")
+)
+
+
+# Pretty names
+names(langprob) <- c("Study ID", "Language")
+
+
+dfprintif(langprob,
+          norowmsg = "All languages appear to be spelled correctly.")
+
+
+```
+
+
+### Participants with Unclassified Treatment Plans (Matt will fix)
+
+```{r weird_plan}
+
+weird_plan <- subset(to1clean$ltbi, 
+                     subset = plan %in% "Unknown",
+                     select = c("StudyID", "plan",
+                                "Isoniazid", "IsoniazidFreq",
+                                "Rifampin", "RifampinFreq",
+                                "Rifapentine", "RifapentineFreq",
+                                "Other", "OtherFreq")
+)
+
+
+dfprintif(weird_plan,
+          norowmsg = "All plans are successfully classified.")
+
+
+```
+
+
