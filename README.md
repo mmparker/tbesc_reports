@@ -29,6 +29,8 @@ skepticism.  If you find an error or would like something to be added to
 the report, let me know! This is a rough, homegrown piece of software -
 it's far from perfect. But many things are easily repaired or expanded.
 
+If you're feeling really awesome, [go to this report's repository and submit
+an issue](https://github.com/mmparker/tbesc_reports/issues).
 
 ### Keeping Your Copy of the Code Up-To-Date
 
@@ -49,8 +51,15 @@ To get the report code in the first place:
 
     git clone git://github.com/mmparker/tbesc_reports.git
 
-To get the latest code, any time afterward:
+... then proceed with the steps above. To get the latest code, 
+any time afterward:
 
     git pull
 
-That's it. Really. Mostly.
+If there have been changes, a bunch of gibberish will fly past your screen
+and then the files will be up-to-date; if your code is already at the latest
+version, Git will politely say so.
+
+It's tricky to get the hang of Git at first, but it's absolutely worth it for
+anybody who writes code or papers or anything collaboratively. I highly
+recommend it.
