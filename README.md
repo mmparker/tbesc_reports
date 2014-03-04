@@ -3,7 +3,7 @@ This project generates two reports from TBESC data: a data quality report
 (to1results). It's geared for Windows; if you're on something else, email me
 (mattmparker@gmail.com) and we can figure out what you need to do.
 
-## To use the report:
+### To use the report:
 
 1. Edit the file `local_facts.csv` to have the correct name for your site,
 your site's target enrollment number,
@@ -22,7 +22,7 @@ and the correct dates for the current enrollment period
 `results_report.html`. This should show the results for your site.
 
 
-## Errors and Feature Requests
+### Errors and Feature Requests
 
 You should definitely expect errors in this report, so please use it with
 skepticism.  If you find an error or would like something to be added to 
@@ -30,7 +30,7 @@ the report, let me know! This is a rough, homegrown piece of software -
 it's far from perfect. But many things are easily repaired or expanded.
 
 
-## Keeping Your Copy of the Code Up-To-Date
+### Keeping Your Copy of the Code Up-To-Date
 
 For a one-time installation, it's easiest to just unzip the code into a
 directory and get to work. As the code evolves, however, you might find that
@@ -46,9 +46,11 @@ here are the only commands you'll need (as ever, feel free to contact me
 for help getting set up):
 
 To get the report code in the first place:
+
     git clone git://github.com/mmparker/tbesc_reports.git
 
 To get the latest code, any time afterward:
+
     git pull
 
 That's it. Really. Mostly.
