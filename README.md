@@ -8,7 +8,7 @@ This project generates two reports from TBESC data: a data quality report
 1. Edit the file `local_facts.csv` to have the correct name for your site,
 your site's target enrollment number,
 and the correct dates for the current enrollment period
-2. Install R ([RStudio](http://www.rstudio.com/) is best for beginners)
+2. Install R ([RStudio is best for beginners - click here](http://www.rstudio.com/))
 3. Open the `install_r_packages.r` to install essential packages
  - If you're using RStudio: click the "Source" button near the top-middle of your screen
  - If you're using base R: just copy the script and paste it into R
