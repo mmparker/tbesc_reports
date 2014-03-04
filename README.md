@@ -13,8 +13,11 @@ and the correct dates for the current enrollment period
  - If you're using RStudio: click the "Source" button near the top-middle of your screen
  - If you're using base R: just copy the script and paste it into R
 4. Download your data from DMS (check all the boxes)
+ - Click the "Data Extract" link on the left
+ - Check all of the boxes (but leave the dates blank)
+ - Click the download link
 5. Put the dataextract.zip file into the `data/originals` folder, as-is
-6. Double-click the "update_data.bat" file in the `data` folder
+6. Double-click the `update_data.bat` file in the `data` folder
 7. Check in the `data/cleaned` folder; there should now be a file called `to1clean.rdata`
 8. In the `to1report` folder, there should be an HTML file called 
 `qa_report.html`. Open it - you should the QA report for your site.
