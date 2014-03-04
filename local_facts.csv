@@ -1,2 +1,2 @@
 site,enroll_target,period_start,period_end,datapath
-Denver,600,9/30/2013,9/30/2014,data\cleaned\to1clean.rdata
+Denver,600,9/30/2013,9/30/2014,..\data\cleaned\to1clean.rdata
