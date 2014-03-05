@@ -24,13 +24,20 @@ and the correct dates for the current enrollment period
  - Check all of the boxes (but leave the dates blank)
  - Click the download link
 7. Put the dataextract.zip file into the `data/originals` folder, as-is
-8. Double-click the `update_data.bat` file in the `data` folder
+8. Open the `data/clean_script.r` file in RStudio (this is the file that
+generates the clean data and runs the reports). Click the "Source" button to run
+the code.
 9. Check in the `data/cleaned` folder; there should now be a file called `to1clean.rdata`
 10. In the `to1report` folder, there should be an HTML file called 
 `qa_report.html`. Open it - you should the QA report for your site.
 11. In the `to1results` folder, there should be an HTML file called 
 `results_report.html`. This should show the results for your site.
 
+
+After your initial setup, all you need to do to update the reports is drag
+the new `dataextract.zip` file to `data/originals` (Steps 6 and 7) and run the
+`clean_script.r` file in RStudio (Step 8). I usually do this once a day.
+I find it helpful to have shortcuts to the HTML files right on my desktop.
 
 ### Errors and Feature Requests
 
