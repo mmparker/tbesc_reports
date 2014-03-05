@@ -1,7 +1,7 @@
 This project generates two reports from TBESC data: a data quality report
 (the poorly-named to1report) and a report of the study's results so far
 (to1results). It's geared for Windows; if you're on something else, email me
-(mattmparker@gmail.com) and we can figure out what you need to do.
+(matt.parker@dhha.org) and we can figure out what you need to do.
 
 ### To use the report:
 
