@@ -5,23 +5,30 @@ This project generates two reports from TBESC data: a data quality report
 
 ### To use the report:
 
-1. Edit the file `local_facts.csv` to have the correct name for your site,
+1. Get the files. You can download the files from 
+[this page](https://github.com/mmparker/tbesc_reports) by clicking the
+"Download ZIP" button at the middle-right of the page. Alternatively, you
+can use the program Git to get the files and keep them up-to-date; see below.
+2. Extract the files (using a program like WinZip or 7Zip) into a convenient 
+directory. This should lay out all of the files and directories you'll need 
+for the reports to run correctly.
+3. Edit the file `local_facts.csv` to have the correct name for your site,
 your site's target enrollment number,
 and the correct dates for the current enrollment period
-2. Install R ([RStudio is best for beginners - click here](http://www.rstudio.com/))
-3. Open the `install_r_packages.r` to install essential packages
+4. Install R ([RStudio is best for beginners - click here](http://www.rstudio.com/))
+5. Open the `install_r_packages.r` to install essential packages
  - If you're using RStudio: click the "Source" button near the top-middle of your screen
  - If you're using base R: just copy the script and paste it into R
-4. Download your data from DMS (check all the boxes)
+6. Download your data from DMS (check all the boxes)
  - Click the "Data Extract" link on the left
  - Check all of the boxes (but leave the dates blank)
  - Click the download link
-5. Put the dataextract.zip file into the `data/originals` folder, as-is
-6. Double-click the `update_data.bat` file in the `data` folder
-7. Check in the `data/cleaned` folder; there should now be a file called `to1clean.rdata`
-8. In the `to1report` folder, there should be an HTML file called 
+7. Put the dataextract.zip file into the `data/originals` folder, as-is
+8. Double-click the `update_data.bat` file in the `data` folder
+9. Check in the `data/cleaned` folder; there should now be a file called `to1clean.rdata`
+10. In the `to1report` folder, there should be an HTML file called 
 `qa_report.html`. Open it - you should the QA report for your site.
-9. In the `to1results` folder, there should be an HTML file called 
+11. In the `to1results` folder, there should be an HTML file called 
 `results_report.html`. This should show the results for your site.
 
 
