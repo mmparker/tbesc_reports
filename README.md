@@ -25,7 +25,9 @@ and the correct dates for the current enrollment period
  - Click the download link
 7. Put the dataextract.zip file into the `data/originals` folder, as-is
 8. Open the `data/clean_script.r` file in RStudio (this is the file that
-generates the clean data and runs the reports). Click the "Source" button to run
+generates the clean data and runs the reports). 
+ - Make sure the working directory is set correctly by clicking the menu Session ->  Set Working Directory -> To Source File Location
+ - Click the "Source" button to run the reports
 the code.
 9. Check in the `data/cleaned` folder; there should now be a file called `to1clean.rdata`
 10. In the `to1report` folder, there should be an HTML file called 
