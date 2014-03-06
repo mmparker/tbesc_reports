@@ -23,7 +23,7 @@ if(file.exists(file.path("originals", "dataextract.zip"))) {
 
 
 # Clean the TO 1 data and output a nice, tidy list
-to1clean <- clean_to1(extractfile = file.path("originals", "dataextract.zip"))
+to1clean <- clean_to1(extractfile = extractpath)
 
 save(to1clean, file = file.path("cleaned", "to1clean.rdata"))
 
