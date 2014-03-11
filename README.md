@@ -60,25 +60,16 @@ alternative: Git.
 
 Git is a version control system (think Microsoft Word's "Track Changes"
 feature, on steroids). Git makes it very easy to keep your code in sync with
-my latest version - but it might not seem easy because you'll have to 
-install another program ([Git for Windows](http://msysgit.github.io/)) and
-type some arcane commands into a terminal. If you want to go that route,
-here are the only commands you'll need (as ever, feel free to contact me
-for help getting set up):
+my latest version. The easiest thing to do is probably to install
+[GitHub for Windows](http://windows.github.com/). Once you've got that
+installed, go to [the reports' project page](https://github.com/mmparker/tbesc_reports)
+and click the "Clone in Desktop" button on the middle-right of the page.
 
-To get the report code in the first place:
+GitHub for Windows should then automatically pull all of the files over into a
+so-called "local repository". Update the `local_facts.csv` in that directory
+and then run the reports as above. Where this setup really shines is when I
+make changes to the reporting code - in order to get the latest version, you
+only need to open GitHub for Windows and click "Sync".
 
-    git clone git://github.com/mmparker/tbesc_reports.git
-
-... then proceed with the steps above. To get the latest code, 
-any time afterward:
-
-    git pull
-
-If there have been changes, a bunch of gibberish will fly past your screen
-and then the files will be up-to-date; if your code is already at the latest
-version, Git will politely say so.
-
-It's tricky to get the hang of Git at first, but it's absolutely worth it for
-anybody who writes code or papers or anything collaboratively. I highly
-recommend it.
+Using Git and GitHub definitely takes some getting used to, but I think it's
+well worth it. Don't hesitate to let me know if you're having any problems.
