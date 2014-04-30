@@ -534,7 +534,7 @@ testage.agg <- ddply(testage, .var = "age.grp", .fun = summarise,
     per.tstpos = sum(tst %in% "Positive") / n,
     per.qftpos = sum(qft %in% "Positive") / n,
     per.tspotpos = sum(tspot %in% "Positive") / n,
-    per.tspotbord = sum(tspot %in% "Borderline") / n
+    per.tspotbord = sum(tspot %in% c("Positive", "Borderline")) / n
                      
 )
 
@@ -545,7 +545,7 @@ testage.melt <- melt(testage.agg, id.vars = c("age.grp", "n"))
 levels(testage.melt$variable) <- c("TST Positive", 
                                    "QFT Positive",
                                    "TSPOT Positive",
-                                   "TSPOT Borderline")
+                                   "TSPOT Positive + Borderline")
 
 
 ggplot(testage.melt, 
