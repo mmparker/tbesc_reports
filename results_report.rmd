@@ -553,8 +553,8 @@ ggplot(testage.melt,
            y = value,
            color = variable,
            group = variable)) +
-    geom_point(aes(size = n, shape = variable)) +
-    geom_line(size = 1.3) +
+    geom_line(size = 1.5) +
+    geom_point(aes(shape = variable), size = 6) +
     labs(x = "Age at Enrollment", 
          y = "Percent with Result",
          color = "Test",
@@ -563,7 +563,12 @@ ggplot(testage.melt,
          shape = "Test") +
     scale_y_continuous(labels = percent) +
     scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
-    theme_tbesc
+    scale_shape_manual(values = c(15, 17, 18, 16)) +
+    theme_tbesc +
+    guides(shape = guide_legend(override.aes = list(size = 7, linetype = 0)))
+
+
+
 
 ```
 
