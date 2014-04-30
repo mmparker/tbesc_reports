@@ -534,7 +534,7 @@ testage.agg <- ddply(testage, .var = "age.grp", .fun = summarise,
     per.tstpos = sum(tst %in% "Positive") / n,
     per.qftpos = sum(qft %in% "Positive") / n,
     per.tspotpos = sum(tspot %in% "Positive") / n,
-    per.tspotbord = sum(tspot %in% "Borderline") / n
+    per.tspotbord = sum(tspot %in% c("Positive", "Borderline")) / n
                      
 )
 
@@ -545,7 +545,7 @@ testage.melt <- melt(testage.agg, id.vars = c("age.grp", "n"))
 levels(testage.melt$variable) <- c("TST Positive", 
                                    "QFT Positive",
                                    "TSPOT Positive",
-                                   "TSPOT Borderline")
+                                   "TSPOT Positive + Borderline")
 
 
 ggplot(testage.melt, 
@@ -553,15 +553,22 @@ ggplot(testage.melt,
            y = value,
            color = variable,
            group = variable)) +
-    geom_point(aes(size = n, shape = variable)) +
-    geom_line(aes(linetype = variable)) +
-    labs(x = "Age at Enrollment", y = "Percent with Result") +
+    geom_line(size = 1) +
+    geom_point(aes(shape = variable), size = 6) +
+    labs(x = "Age at Enrollment", 
+         y = "Percent with Result",
+         color = "Test",
+         size = "# of Participants",
+         linetype = "Test",
+         shape = "Test") +
     scale_y_continuous(labels = percent) +
-    scale_size_continuous("# of Participants") +
-    scale_color_manual("Test", values = brewer.pal(n = 4, name = "Set1")) +
-    scale_linetype_discrete("Test") +
-    scale_shape_discrete("Test") +
-    theme_tbesc
+    scale_color_manual(values = brewer.pal(n = 4, name = "Set1")) +
+    scale_shape_manual(values = c(15, 17, 18, 16)) +
+    theme_tbesc +
+    guides(shape = guide_legend(override.aes = list(size = 7, linetype = 0)))
+
+
+
 
 ```
 
